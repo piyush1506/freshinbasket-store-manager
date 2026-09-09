@@ -393,10 +393,24 @@ export function RevenueTrendChart({ orders = [], isDark }) {
 /* ─────────────────────────────────────────────────────────────
    2. CATEGORY DISTRIBUTION DONUT CHART & DETAILED BREAKDOWN
 ───────────────────────────────────────────────────────────── */
-export function CategoryDistributionChart({ orders = [], products = [], isDark }) {
+export function CategoryDistributionChart({ orders = [], products = [], categories = [], isDark }) {
   const [hoveredCategory, setHoveredCategory] = useState(null);
   const [metricMode, setMetricMode] = useState("revenue"); // 'revenue' | 'units'
   const [selectedCategoryDetail, setSelectedCategoryDetail] = useState(null);
+
+  // Build canonical category list from database
+  const canonicalCategories = useMemo(() => {
+    if (Array.isArray(categories) && categories.length > 0) {
+      return categories.map((c) => ({
+        id: c.id,
+        name: c.name?.trim() || "General",
+        slug: (c.slug || c.name || "").toLowerCase().trim(),
+        displayName:
+          c.name?.charAt(0).toUpperCase() + c.name?.slice(1).toLowerCase(),
+      }));
+    }
+    return [];
+  }, [categories]);
 
   // Build high-accuracy product lookup
   const productLookup = useMemo(() => {
@@ -414,104 +428,51 @@ export function CategoryDistributionChart({ orders = [], products = [], isDark }
     let totalRev = 0;
     let totalUnits = 0;
 
-    // Helper: guess category from product name if not tagged
-    const guessCategory = (name = "") => {
-      const lower = name.toLowerCase();
-      if (
-        lower.includes("milk") ||
-        lower.includes("paneer") ||
-        lower.includes("ghee") ||
-        lower.includes("curd") ||
-        lower.includes("butter") ||
-        lower.includes("cheese") ||
-        lower.includes("dahi") ||
-        lower.includes("lassi")
-      ) {
-        return "Dairy & Milk";
+    // Helper: Normalize category name to one of the store's official categories
+    const getCanonicalName = (rawName = "", prodName = "") => {
+      const clean = (rawName || "").toLowerCase().trim();
+
+      // If we have official store categories, match directly
+      if (canonicalCategories.length > 0) {
+        const directMatch = canonicalCategories.find(
+          (c) =>
+            c.slug === clean ||
+            c.name.toLowerCase() === clean ||
+            clean.includes(c.slug) ||
+            clean.includes(c.name.toLowerCase())
+        );
+        if (directMatch) return directMatch.displayName;
+
+        // Try matching product name to category slug/name
+        const prodClean = (prodName || "").toLowerCase();
+        const prodMatch = canonicalCategories.find(
+          (c) => prodClean.includes(c.slug) || prodClean.includes(c.name.toLowerCase())
+        );
+        if (prodMatch) return prodMatch.displayName;
+
+        // Smart keyword fallback to one of the canonical categories
+        for (const c of canonicalCategories) {
+          const s = c.slug;
+          if (
+            (s.includes("veg") && (prodClean.includes("potato") || prodClean.includes("onion") || prodClean.includes("tomato") || prodClean.includes("mirch") || prodClean.includes("gobi") || prodClean.includes("bhindi") || prodClean.includes("palak") || prodClean.includes("ginger") || prodClean.includes("garlic") || prodClean.includes("lemon") || prodClean.includes("chilli") || prodClean.includes("coriander") || prodClean.includes("matar") || prodClean.includes("carrot") || prodClean.includes("cucumber"))) ||
+            (s.includes("fruit") && (prodClean.includes("apple") || prodClean.includes("banana") || prodClean.includes("mango") || prodClean.includes("orange") || prodClean.includes("papaya") || prodClean.includes("grapes") || prodClean.includes("watermelon") || prodClean.includes("pomegranate") || prodClean.includes("guava"))) ||
+            (s.includes("dairy") && (prodClean.includes("milk") || prodClean.includes("paneer") || prodClean.includes("ghee") || prodClean.includes("curd") || prodClean.includes("butter") || prodClean.includes("cheese") || prodClean.includes("dahi")))
+          ) {
+            return c.displayName;
+          }
+        }
+
+        // Default to first canonical category
+        return canonicalCategories[0].displayName;
       }
-      if (
-        lower.includes("apple") ||
-        lower.includes("banana") ||
-        lower.includes("mango") ||
-        lower.includes("orange") ||
-        lower.includes("papaya") ||
-        lower.includes("grapes") ||
-        lower.includes("watermelon") ||
-        lower.includes("fruit") ||
-        lower.includes("pomegranate") ||
-        lower.includes("guava")
-      ) {
-        return "Fresh Fruits";
-      }
-      if (
-        lower.includes("atta") ||
-        lower.includes("flour") ||
-        lower.includes("rice") ||
-        lower.includes("dal") ||
-        lower.includes("oil") ||
-        lower.includes("sugar") ||
-        lower.includes("salt") ||
-        lower.includes("masala") ||
-        lower.includes("spice") ||
-        lower.includes("chana") ||
-        lower.includes("besan") ||
-        lower.includes("poha") ||
-        lower.includes("suji")
-      ) {
-        return "Staples & Grocery";
-      }
-      if (
-        lower.includes("snack") ||
-        lower.includes("biscuit") ||
-        lower.includes("namkeen") ||
-        lower.includes("chips") ||
-        lower.includes("cookie") ||
-        lower.includes("bhujia") ||
-        lower.includes("munch") ||
-        lower.includes("chocolate")
-      ) {
-        return "Snacks & Packaged Food";
-      }
-      if (
-        lower.includes("soap") ||
-        lower.includes("wash") ||
-        lower.includes("clean") ||
-        lower.includes("detergent") ||
-        lower.includes("shampoo") ||
-        lower.includes("colgate") ||
-        lower.includes("paste") ||
-        lower.includes("harpic") ||
-        lower.includes("surf")
-      ) {
-        return "Household & Personal Care";
-      }
-      if (
-        lower.includes("potato") ||
-        lower.includes("aloo") ||
-        lower.includes("onion") ||
-        lower.includes("pyaz") ||
-        lower.includes("tomato") ||
-        lower.includes("tamatar") ||
-        lower.includes("chilli") ||
-        lower.includes("mirch") ||
-        lower.includes("ginger") ||
-        lower.includes("adrak") ||
-        lower.includes("garlic") ||
-        lower.includes("lahsun") ||
-        lower.includes("bhindi") ||
-        lower.includes("gobi") ||
-        lower.includes("palak") ||
-        lower.includes("coriander") ||
-        lower.includes("lemon") ||
-        lower.includes("matar") ||
-        lower.includes("carrot") ||
-        lower.includes("capsicum") ||
-        lower.includes("cucumber") ||
-        lower.includes("kheera")
-      ) {
-        return "Fresh Vegetables";
-      }
-      return "Daily Essentials";
+
+      // Fallback if categories API isn't populated yet: normalize raw name
+      if (clean.includes("fruit")) return "Fruits";
+      if (clean.includes("veg")) return "Vegetables";
+      if (clean.includes("dairy") || clean.includes("milk")) return "Dairy & Milk";
+      if (clean.includes("staple") || clean.includes("grocery")) return "Staples & Grocery";
+
+      return clean ? clean.charAt(0).toUpperCase() + clean.slice(1) : "General Produce";
     };
 
     // 1. Tally units and revenue sold from non-cancelled orders
@@ -523,17 +484,15 @@ export function CategoryDistributionChart({ orders = [], products = [], isDark }
           const matchedProd =
             productLookup.get(prodId) || productLookup.get(prodName.toLowerCase().trim());
 
-          let catName =
+          // Read actual category from database (Do NOT use section_name)
+          const rawCatName =
             (matchedProd?.category_names && matchedProd.category_names[0]) ||
-            matchedProd?.section_name ||
             matchedProd?.category?.name ||
             matchedProd?.category_name ||
             item.category_name ||
-            guessCategory(prodName);
+            "";
 
-          if (!catName || catName === "null" || catName === "undefined") {
-            catName = guessCategory(prodName);
-          }
+          const catName = getCanonicalName(rawCatName, prodName);
 
           const qty = parseFloat(item.quantity || 1);
           const unitPrice = parseFloat(item.unit_price || item.price || 0);
@@ -559,7 +518,7 @@ export function CategoryDistributionChart({ orders = [], products = [], isDark }
               name: prodName,
               units: 0,
               revenue: 0,
-              unitPrice: unitPrice > 0 ? unitPrice : (revenue / (qty || 1)),
+              unitPrice: unitPrice > 0 ? unitPrice : revenue / (qty || 1),
             };
           }
           catMap[catName].products[prodName].units += qty;
@@ -574,12 +533,13 @@ export function CategoryDistributionChart({ orders = [], products = [], isDark }
     // Fallback: If no order items are parsed, compute from inventory catalog
     if (totalUnits === 0 && products.length > 0) {
       products.forEach((p) => {
-        const catName =
+        const rawCatName =
           (p.category_names && p.category_names[0]) ||
-          p.section_name ||
           p.category?.name ||
           p.category_name ||
-          guessCategory(p.name);
+          "";
+
+        const catName = getCanonicalName(rawCatName, p.name);
 
         if (!catMap[catName]) {
           catMap[catName] = {
@@ -614,8 +574,6 @@ export function CategoryDistributionChart({ orders = [], products = [], isDark }
       "#EC4899", // Pink
       "#06B6D4", // Cyan
       "#F97316", // Orange
-      "#14B8A6", // Teal
-      "#6366F1", // Indigo
     ];
 
     const sortKey = metricMode === "revenue" ? "revenue" : "units";
@@ -643,7 +601,8 @@ export function CategoryDistributionChart({ orders = [], products = [], isDark }
       totalUnitsSold: totalUnits,
       activeCategoryCount: sortedCats.length,
     };
-  }, [orders, products, productLookup, metricMode]);
+  }, [orders, products, canonicalCategories, productLookup, metricMode]);
+
 
   // Donut Arc calculation
   const radius = 60;

@@ -377,6 +377,8 @@ export default function AdminDashboardPage() {
   const [riders, setRiders] = useState([]);
   const [lastRefreshed, setLastRefreshed] = useState(null);
 
+  const [categories, setCategories] = useState([]);
+
   const fetchDashboardData = useCallback(
     async (isSilent = false) => {
       if (!isSilent) setRefreshing(true);
@@ -389,7 +391,7 @@ export default function AdminDashboardPage() {
           "Content-Type": "application/json",
         };
 
-        const [ordersRes, prodRes, ridersRes] = await Promise.all([
+        const [ordersRes, prodRes, ridersRes, catRes] = await Promise.all([
           fetch(`${API_URL}/api/v1/orders/`, {
             headers,
           }),
@@ -400,6 +402,9 @@ export default function AdminDashboardPage() {
             `${API_URL}/api/v1/users/?role=DELIVERY`,
             { headers }
           ),
+          fetch(`${API_URL}/api/v1/categories/`, {
+            headers,
+          }),
         ]);
 
         let newOrders = [];
@@ -421,6 +426,11 @@ export default function AdminDashboardPage() {
         if (prodRes.ok) {
           const prodData = await prodRes.json();
           setProducts(Array.isArray(prodData) ? prodData : []);
+        }
+
+        if (catRes.ok) {
+          const catData = await catRes.json();
+          setCategories(Array.isArray(catData) ? catData : (catData?.results || []));
         }
 
         if (ridersRes.ok) {
@@ -825,9 +835,10 @@ export default function AdminDashboardPage() {
           <RevenueTrendChart orders={orders} isDark={isDark} />
         </div>
         <div className="lg:col-span-5 flex flex-col">
-          <CategoryDistributionChart orders={orders} products={products} isDark={isDark} />
+          <CategoryDistributionChart orders={orders} products={products} categories={categories} isDark={isDark} />
         </div>
       </div>
+
 
       {/* ─── 4. OPERATIONAL INSIGHTS (Peak Hours & Live Orders) ─── */}
       <div className="dash-fade-up grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
