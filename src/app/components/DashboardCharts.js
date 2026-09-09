@@ -750,20 +750,20 @@ export function CategoryDistributionChart({ orders = [], products = [], isDark }
             </svg>
 
             {/* Inner Center Label */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
-              <span className="text-base sm:text-lg font-bold text-slate-800 dark:text-white">
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none px-2">
+              <span className="text-base sm:text-lg font-black text-slate-800 dark:text-white leading-none">
                 {metricMode === "revenue"
-                  ? `₹${totalRevenue >= 1000 ? (totalRevenue / 1000).toFixed(1) + "k" : totalRevenue}`
-                  : totalUnitsSold}
+                  ? `₹${totalRevenue >= 1000 ? (totalRevenue / 1000).toFixed(1) + "k" : Math.round(totalRevenue)}`
+                  : `${Math.round(totalUnitsSold)}`}
               </span>
-              <span className="text-[10px] font-semibold uppercase text-slate-500 dark:text-zinc-400">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-400 mt-1">
                 {metricMode === "revenue" ? "Total Sales" : "Units Sold"}
               </span>
             </div>
           </div>
 
           {/* Legend Items */}
-          <div className="flex-1 w-full space-y-2 max-h-56 overflow-y-auto pr-1">
+          <div className="flex-1 w-full space-y-2 max-h-64 overflow-y-auto pr-1">
             {categoryData.length === 0 ? (
               <p className="text-xs text-slate-500 italic">No sales categories recorded yet.</p>
             ) : (
@@ -773,7 +773,7 @@ export function CategoryDistributionChart({ orders = [], products = [], isDark }
                   onMouseEnter={() => setHoveredCategory(cat.name)}
                   onMouseLeave={() => setHoveredCategory(null)}
                   onClick={() => setSelectedCategoryDetail(cat)}
-                  className={`flex items-center justify-between p-2 rounded-xl text-xs transition-all cursor-pointer border ${
+                  className={`flex items-center justify-between p-2.5 rounded-xl text-xs transition-all cursor-pointer border ${
                     selectedCategoryDetail?.name === cat.name
                       ? "bg-slate-100 dark:bg-zinc-800 border-indigo-400/50 shadow-xs"
                       : hoveredCategory === cat.name
@@ -781,25 +781,25 @@ export function CategoryDistributionChart({ orders = [], products = [], isDark }
                       : "border-transparent hover:bg-slate-50/60 dark:hover:bg-zinc-900/60"
                   }`}
                 >
-                  <div className="flex items-center gap-2 min-w-0">
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1 pr-2">
                     <span
-                      className="w-2.5 h-2.5 rounded-full shrink-0 shadow-xs"
+                      className="w-3 h-3 rounded-full shrink-0 shadow-xs"
                       style={{ background: cat.color }}
                     />
-                    <div className="truncate">
-                      <span className="font-semibold text-slate-700 dark:text-zinc-200 block truncate">
+                    <div className="min-w-0">
+                      <span className="font-bold text-slate-800 dark:text-zinc-100 block truncate">
                         {cat.name}
                       </span>
-                      <span className="text-[10px] text-slate-400 dark:text-zinc-500">
-                        {cat.topProducts.length} items sold • {cat.orderCount} orders
+                      <span className="text-[11px] text-slate-400 dark:text-zinc-400">
+                        {cat.topProducts.length} items • {cat.orderCount} orders
                       </span>
                     </div>
                   </div>
                   <div className="text-right shrink-0">
-                    <span className="font-bold text-slate-800 dark:text-zinc-100 block">
+                    <span className="font-black text-slate-800 dark:text-zinc-100 block">
                       {cat.percentage}%
                     </span>
-                    <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                    <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
                       {metricMode === "revenue"
                         ? `₹${Math.round(cat.revenue).toLocaleString("en-IN")}`
                         : `${Math.round(cat.units)} units`}

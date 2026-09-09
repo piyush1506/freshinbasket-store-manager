@@ -634,399 +634,266 @@ export default function AdminDashboardPage() {
   const dateLabel = isHistorical ? "Latest Activity: " + currentDate : currentDate;
 
   return (
-    <div className="max-w-[1400px] mx-auto">
-      {/* ─── TWO COLUMN LAYOUT ─── */}
-      <div className="flex flex-col lg:flex-row gap-6">
-        {/* ─── LEFT COLUMN (Main Content) ─── */}
-        <div className="flex-1 min-w-0 space-y-6">
-          {/* Greeting Header */}
-          <div className="dash-fade-up flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h1
-                className="bg-gradient-to-r from-emerald-600 to-green-500 bg-clip-text text-transparent drop-shadow-sm text-2xl sm:text-[28px] font-medium tracking-tight"
-                style={{
-                  color: isDark ? "#fff" : "#1a1a2e",
-                  fontFamily: "'Inter', sans-serif",
-                }}
-              >
-                Hello, Admin 👋
-              </h1>
-              <p
-                className="text-sm mt-1"
-                style={{ color: "#8C8FA7" }}
-              >
-                Track store progress here. Your overall result is good
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <div
-                className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium"
-                style={{
-                  background: isDark ? (isHistorical ? "rgba(245,158,11,0.1)" : "#1a1a26") : (isHistorical ? "#FEF3C7" : "#fff"),
-                  color: isDark ? (isHistorical ? "#F59E0B" : "#888") : (isHistorical ? "#D97706" : "#8C8FA7"),
-                  border: `1px solid ${isDark ? (isHistorical ? "rgba(245,158,11,0.2)" : "#252530") : (isHistorical ? "#FDE68A" : "#ECEDF1")}`,
-                }}
-              >
-                <CalendarDays size={14} />
-                <span>{dateLabel}</span>
-              </div>
-              <button
-                onClick={() => fetchDashboardData(false)}
-                disabled={refreshing}
-                className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold admin-nav-item cursor-pointer"
-                style={{
-                  background: "#4A7DFF",
-                  color: "#fff",
-                  boxShadow: "0 2px 8px rgba(74,125,255,0.3)",
-                  opacity: refreshing ? 0.7 : 1,
-                }}
-              >
-                <RefreshCw
-                  size={13}
-                  className={refreshing ? "animate-spin" : ""}
-                />
-                <span>{refreshing ? "Syncing..." : "Sync"}</span>
-              </button>
-            </div>
-          </div>
-
-          {/* ─── STAT CARDS ─── */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {/* Finished Orders */}
-            <div
-              className="dash-fade-up dash-fade-up-d1 p-5 rounded-2xl"
-              style={{
-                background: isDark ? "#111118" : "#fff",
-                border: `1px solid ${isDark ? "#1e1e2a" : "#ECEDF1"}`,
-              }}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <span
-                  className="text-xs font-medium uppercase tracking-wider"
-                  style={{ color: "#8C8FA7" }}
-                >
-                  Delivered
-                </span>
-                <div
-                  className="w-8 h-8 rounded-lg flex items-center justify-center"
-                  style={{
-                    background: isDark
-                      ? "rgba(16,185,129,0.1)"
-                      : "#ECFDF5",
-                  }}
-                >
-                  <CheckCircle2 size={16} style={{ color: "#10B981" }} />
-                </div>
-              </div>
-              <div className="flex items-baseline gap-2">
-                <span
-                  className="text-3xl font-medium"
-                  style={{
-                    color: isDark ? "#fff" : "#1a1a2e",
-                  }}
-                >
-                  {deliveredToday}
-                </span>
-                <span
-                  className="text-xs font-medium px-2 py-0.5 rounded-full"
-                  style={{
-                    background: isDark
-                      ? "rgba(16,185,129,0.1)"
-                      : "#ECFDF5",
-                    color: "#10B981",
-                  }}
-                >
-                  today
-                </span>
-              </div>
-              <div
-                className="mt-3 h-1.5 rounded-full overflow-hidden"
-                style={{
-                  background: isDark ? "#1a1a26" : "#F0F1F5",
-                }}
-              >
-                <div
-                  className="h-full rounded-full dash-progress-fill"
-                  style={{
-                    width: `${totalNonCancelled > 0 ? (deliveredToday / totalNonCancelled) * 100 : 0}%`,
-                    background:
-                      "linear-gradient(90deg, #10B981, #34D399)",
-                  }}
-                />
-              </div>
-            </div>
-
-            {/* Active Orders (Tracked) */}
-            <div
-              className="dash-fade-up dash-fade-up-d2 p-5 rounded-2xl"
-              style={{
-                background: isDark ? "#111118" : "#fff",
-                border: `1px solid ${isDark ? "#1e1e2a" : "#ECEDF1"}`,
-              }}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <span
-                  className="text-xs font-medium uppercase tracking-wider"
-                  style={{ color: "#8C8FA7" }}
-                >
-                  Active
-                </span>
-                <div
-                  className="w-8 h-8 rounded-lg flex items-center justify-center"
-                  style={{
-                    background: isDark
-                      ? "rgba(74,125,255,0.1)"
-                      : "#EEF2FF",
-                  }}
-                >
-                  <Clock size={16} style={{ color: "#4A7DFF" }} />
-                </div>
-              </div>
-              <div className="flex items-baseline gap-2">
-                <span
-                  className="text-3xl font-medium"
-                  style={{
-                    color: isDark ? "#fff" : "#1a1a2e",
-                  }}
-                >
-                  {pendingOrders.length + outForDeliveryOrders.length}
-                </span>
-                <span
-                  className="text-xs font-medium"
-                  style={{ color: "#8C8FA7" }}
-                >
-                  orders
-                </span>
-              </div>
-              <div className="flex items-center gap-3 mt-3">
-                <div
-                  className="flex items-center gap-1.5 text-[11px] font-medium px-2 py-1 rounded-lg"
-                  style={{
-                    background: isDark
-                      ? "rgba(245,158,11,0.1)"
-                      : "#FEF3C7",
-                    color: "#F59E0B",
-                  }}
-                >
-                  <span>{pendingOrders.length} pending</span>
-                </div>
-                <div
-                  className="flex items-center gap-1.5 text-[11px] font-medium px-2 py-1 rounded-lg"
-                  style={{
-                    background: isDark
-                      ? "rgba(139,92,246,0.1)"
-                      : "#EDE9FE",
-                    color: "#8B5CF6",
-                  }}
-                >
-                  <span>{outForDeliveryOrders.length} on road</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Efficiency */}
-            <div
-              className="dash-fade-up dash-fade-up-d3 p-5 rounded-2xl flex items-center justify-between"
-              style={{
-                background: isDark ? "#111118" : "#fff",
-                border: `1px solid ${isDark ? "#1e1e2a" : "#ECEDF1"}`,
-              }}
-            >
-              <div>
-                <span
-                  className="text-xs font-medium uppercase tracking-wider"
-                  style={{ color: "#8C8FA7" }}
-                >
-                  Efficiency
-                </span>
-                <div className="mt-3 flex items-baseline gap-1">
-                  <span
-                    className="text-3xl font-medium"
-                    style={{
-                      color: isDark ? "#fff" : "#1a1a2e",
-                    }}
-                  >
-                    {efficiency}%
-                  </span>
-                </div>
-                <p
-                  className="text-[11px] mt-1"
-                  style={{ color: "#8C8FA7" }}
-                >
-                  delivery success rate
-                </p>
-              </div>
-              <EfficiencyRing percentage={efficiency} isDark={isDark} />
-            </div>
-          </div>
-
-          {/* ─── PERFORMANCE CHART ─── */}
+    <div className="w-full space-y-6">
+      {/* ─── 1. TOP HEADER ─── */}
+      <div className="dash-fade-up flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1
+            className="text-2xl sm:text-3xl font-extrabold tracking-tight bg-gradient-to-r from-emerald-600 via-teal-600 to-green-500 bg-clip-text text-transparent"
+          >
+            Operations Overview
+          </h1>
+          <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">
+            Real-time live store metrics, sales velocity, and delivery operations
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
           <div
-            className="dash-fade-up dash-fade-up-d4 p-5 sm:p-6 rounded-2xl"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold shadow-xs"
             style={{
-              background: isDark ? "#111118" : "#fff",
-              border: `1px solid ${isDark ? "#1e1e2a" : "#ECEDF1"}`,
+              background: isDark
+                ? isHistorical
+                  ? "rgba(245,158,11,0.12)"
+                  : "#181824"
+                : isHistorical
+                ? "#FEF3C7"
+                : "#fff",
+              color: isDark
+                ? isHistorical
+                  ? "#F59E0B"
+                  : "#94a3b8"
+                : isHistorical
+                ? "#D97706"
+                : "#64748b",
+              border: `1px solid ${
+                isDark
+                  ? isHistorical
+                    ? "rgba(245,158,11,0.25)"
+                    : "#272738"
+                  : isHistorical
+                  ? "#FDE68A"
+                  : "#e2e8f0"
+              }`,
             }}
           >
-            <div className="flex items-center justify-between mb-5">
-              <div>
-                <h2
-                  className="bg-gradient-to-r from-emerald-600 to-green-500 bg-clip-text text-transparent drop-shadow-sm text-base font-semibold"
-                  style={{ color: isDark ? "#fff" : "#1a1a2e" }}
-                >
-                  Performance
-                </h2>
-                <p
-                  className="text-xs mt-0.5"
-                  style={{ color: "#8C8FA7" }}
-                >
-                  Order trends — last 14 days
-                </p>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-1.5">
-                  <div
-                    className="w-3 h-[3px] rounded-full"
-                    style={{ background: "#4A7DFF" }}
-                  />
-                  <span
-                    className="text-[11px] font-medium"
-                    style={{ color: "#8C8FA7" }}
-                  >
-                    All Orders
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div
-                    className="w-3 h-[3px] rounded-full"
-                    style={{
-                      background: isDark ? "#6C5CE7" : "#A78BFA",
-                    }}
-                  />
-                  <span
-                    className="text-[11px] font-medium"
-                    style={{ color: "#8C8FA7" }}
-                  >
-                    Delivered
-                  </span>
-                </div>
-              </div>
+            <CalendarDays size={14} className="text-emerald-500" />
+            <span>{dateLabel}</span>
+          </div>
+          <button
+            onClick={() => fetchDashboardData(false)}
+            disabled={refreshing}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all cursor-pointer disabled:opacity-60"
+          >
+            <RefreshCw size={13} className={refreshing ? "animate-spin" : ""} />
+            <span>{refreshing ? "Syncing..." : "Sync Live"}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ─── 2. KEY METRICS STAT CARDS (4 Columns) ─── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Today's Sales */}
+        <div
+          className="dash-fade-up p-5 rounded-2xl border transition-all"
+          style={{
+            background: isDark ? "#111118" : "#fff",
+            borderColor: isDark ? "#1e1e2a" : "#ECEDF1",
+          }}
+        >
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400">
+              Today&apos;s Revenue
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+              <TrendingUp size={16} />
             </div>
-            <PerformanceChart orders={orders} isDark={isDark} />
           </div>
-
-          {/* ─── REVENUE & CASH COLLECTION CHART ─── */}
-          <div className="dash-fade-up dash-fade-up-d4">
-            <RevenueTrendChart orders={orders} isDark={isDark} />
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
+              ₹{todayRevenue.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+            </span>
+            <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md">
+              {todayOrders.length} orders
+            </span>
           </div>
+          <p className="text-[11px] text-slate-400 dark:text-zinc-500 mt-2">
+            Non-cancelled sales volume for {currentDate}
+          </p>
+        </div>
 
-          {/* ─── 2-COLUMN ANALYTICS GRID: CATEGORY SHARE & PEAK ORDER HOURS ─── */}
-          <div className="dash-fade-up dash-fade-up-d4 grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <CategoryDistributionChart orders={orders} products={products} isDark={isDark} />
-            <HourlyDistributionChart orders={orders} isDark={isDark} />
+        {/* Delivered Orders */}
+        <div
+          className="dash-fade-up p-5 rounded-2xl border transition-all"
+          style={{
+            background: isDark ? "#111118" : "#fff",
+            borderColor: isDark ? "#1e1e2a" : "#ECEDF1",
+          }}
+        >
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400">
+              Completed Deliveries
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-teal-500/10 text-teal-500 flex items-center justify-center">
+              <CheckCircle2 size={16} />
+            </div>
           </div>
-
-          {/* ─── BHILWARA ORDER PROBABILITY & AREA HEATMAP ─── */}
-          <div className="dash-fade-up dash-fade-up-d4">
-            <BhilwaraOrderMap
-              orders={orders}
-              isDark={isDark}
-              compact={true}
-              onRefresh={() => fetchDashboardData(true)}
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
+              {deliveredToday}
+            </span>
+            <span className="text-xs font-medium text-slate-500 dark:text-zinc-400">
+              of {totalNonCancelled} orders
+            </span>
+          </div>
+          <div className="mt-3 h-1.5 rounded-full overflow-hidden bg-slate-100 dark:bg-zinc-800">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-500"
+              style={{
+                width: `${totalNonCancelled > 0 ? (deliveredToday / totalNonCancelled) * 100 : 0}%`,
+              }}
             />
           </div>
+        </div>
 
-          {/* ─── CURRENT TASKS (Recent Orders) ─── */}
-          <div
-            className="dash-fade-up dash-fade-up-d5 p-5 sm:p-6 rounded-2xl"
-            style={{
-              background: isDark ? "#111118" : "#fff",
-              border: `1px solid ${isDark ? "#1e1e2a" : "#ECEDF1"}`,
-            }}
-          >
-            <div className="flex items-center justify-between mb-5">
+        {/* Pending & On-Road Fleet */}
+        <div
+          className="dash-fade-up p-5 rounded-2xl border transition-all"
+          style={{
+            background: isDark ? "#111118" : "#fff",
+            borderColor: isDark ? "#1e1e2a" : "#ECEDF1",
+          }}
+        >
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400">
+              Active Orders
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center">
+              <Clock size={16} />
+            </div>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
+              {pendingOrders.length + outForDeliveryOrders.length}
+            </span>
+            <span className="text-xs font-medium text-slate-500 dark:text-zinc-400">
+              in pipeline
+            </span>
+          </div>
+          <div className="flex items-center gap-2 mt-2">
+            <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-md">
+              {pendingOrders.length} pending
+            </span>
+            <span className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded-md">
+              {outForDeliveryOrders.length} on road
+            </span>
+          </div>
+        </div>
+
+        {/* Fleet Efficiency & Stock Alert */}
+        <div
+          className="dash-fade-up p-5 rounded-2xl border transition-all flex items-center justify-between"
+          style={{
+            background: isDark ? "#111118" : "#fff",
+            borderColor: isDark ? "#1e1e2a" : "#ECEDF1",
+          }}
+        >
+          <div>
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400">
+              Fulfillment Rate
+            </span>
+            <div className="mt-2 flex items-baseline gap-1">
+              <span className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
+                {efficiency}%
+              </span>
+            </div>
+            <Link
+              href="/inventory"
+              className="text-[11px] font-semibold text-rose-500 hover:underline block mt-1"
+            >
+              {outOfStockProducts.length > 0
+                ? `⚠ ${outOfStockProducts.length} items out of stock`
+                : "✔ All stock healthy"}
+            </Link>
+          </div>
+          <EfficiencyRing percentage={efficiency} isDark={isDark} />
+        </div>
+      </div>
+
+      {/* ─── 3. MAIN ANALYTICS ROW (Revenue Chart & Category Donut) ─── */}
+      <div className="dash-fade-up grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+        <div className="lg:col-span-7 flex flex-col">
+          <RevenueTrendChart orders={orders} isDark={isDark} />
+        </div>
+        <div className="lg:col-span-5 flex flex-col">
+          <CategoryDistributionChart orders={orders} products={products} isDark={isDark} />
+        </div>
+      </div>
+
+      {/* ─── 4. OPERATIONAL INSIGHTS (Peak Hours & Live Orders) ─── */}
+      <div className="dash-fade-up grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+        {/* Hourly Peak Slots */}
+        <div className="lg:col-span-6 flex flex-col">
+          <HourlyDistributionChart orders={orders} isDark={isDark} />
+        </div>
+
+        {/* Current Tasks / Recent Orders */}
+        <div
+          className="lg:col-span-6 p-5 sm:p-6 rounded-2xl border transition-all flex flex-col justify-between"
+          style={{
+            background: isDark ? "#111118" : "#fff",
+            borderColor: isDark ? "#1e1e2a" : "#ECEDF1",
+          }}
+        >
+          <div>
+            <div className="flex items-center justify-between mb-4">
               <div>
-                <h2
-                  className="bg-gradient-to-r from-emerald-600 to-green-500 bg-clip-text text-transparent drop-shadow-sm text-base font-semibold"
+                <h3
+                  className="text-base font-semibold tracking-tight"
                   style={{ color: isDark ? "#fff" : "#1a1a2e" }}
                 >
-                  Current Tasks
-                </h2>
-                <p className="text-xs mt-0.5" style={{ color: "#8C8FA7" }}>
-                  Done {deliveredToday}/{todayOrders.length || "—"}
+                  Recent Order Queue
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">
+                  Live customer orders with rapid dispatch controls
                 </p>
               </div>
               <Link
                 href="/orders"
-                className="flex items-center gap-1 text-xs font-semibold admin-nav-item"
-                style={{ color: "#4A7DFF" }}
+                className="flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline"
               >
-                <span>View All</span>
+                <span>Live Orders</span>
                 <ChevronRight size={14} />
               </Link>
             </div>
 
             {orders.length === 0 ? (
-              <div
-                className="text-center py-12 text-sm"
-                style={{ color: "#8C8FA7" }}
-              >
-                No orders yet.
-              </div>
+              <div className="text-center py-12 text-xs text-slate-400">No active orders yet.</div>
             ) : (
-              <div className="space-y-3">
-                {orders.slice(0, 6).map((order) => {
-                  const config =
-                    statusConfig[order.status] || statusConfig.PENDING;
+              <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
+                {orders.slice(0, 5).map((order) => {
+                  const config = statusConfig[order.status] || statusConfig.PENDING;
                   const progress = statusProgress[order.status] || 0;
 
                   return (
                     <div
                       key={order.id}
-                      className="flex items-center gap-4 p-3 rounded-xl admin-nav-item"
+                      className="flex items-center gap-3 p-3 rounded-xl border transition-all"
                       style={{
-                        background: isDark
-                          ? "rgba(255,255,255,0.02)"
-                          : "#FAFBFC",
-                        border: `1px solid ${isDark ? "#1a1a26" : "#F0F1F5"}`,
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = isDark
-                          ? "rgba(255,255,255,0.04)"
-                          : "#F5F6FA";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = isDark
-                          ? "rgba(255,255,255,0.02)"
-                          : "#FAFBFC";
+                        background: isDark ? "rgba(255,255,255,0.02)" : "#FAFBFC",
+                        borderColor: isDark ? "#1e1e2a" : "#F0F1F5",
                       }}
                     >
-                      <div
-                        className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                        style={{
-                          background: isDark
-                            ? "rgba(74,125,255,0.1)"
-                            : "#EEF2FF",
-                        }}
-                      >
-                        <ShoppingBag
-                          size={16}
-                          style={{ color: "#4A7DFF" }}
-                        />
+                      <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
+                        <ShoppingBag size={15} />
                       </div>
 
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span
-                            className="text-sm font-semibold truncate"
-                            style={{
-                              color: isDark ? "#e4e4e7" : "#1a1a2e",
-                            }}
-                          >
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-slate-900 dark:text-zinc-100 truncate">
                             {order.order_number || `Order #${order.id}`}
                           </span>
                           <span
-                            className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                            className="text-[10px] font-bold px-2 py-0.5 rounded-full"
                             style={{
                               background: config.bg,
                               color: config.color,
@@ -1035,59 +902,21 @@ export default function AdminDashboardPage() {
                             {config.label}
                           </span>
                         </div>
-                        <p
-                          className="text-[11px] mt-0.5 truncate"
-                          style={{ color: "#8C8FA7" }}
-                        >
-                          {order.customer?.first_name ||
-                            order.customer?.username ||
-                            "Customer"}{" "}
-                          • ₹
-                          {parseFloat(order.total_amount || 0).toFixed(0)}
+                        <p className="text-[11px] text-slate-500 dark:text-zinc-400 truncate mt-0.5">
+                          {order.customer?.first_name || order.customer?.username || "Customer"} • ₹
+                          {parseFloat(order.total_amount || 0).toFixed(0)} •{" "}
+                          {order.payment_method || "COD"}
                         </p>
                       </div>
 
-                      <div className="hidden sm:flex items-center gap-3 w-40">
-                        <div
-                          className="flex-1 h-1.5 rounded-full overflow-hidden"
-                          style={{
-                            background: isDark ? "#1a1a26" : "#F0F1F5",
-                          }}
-                        >
-                          <div
-                            className="h-full rounded-full dash-progress-fill"
-                            style={{
-                              width: `${progress}%`,
-                              background: config.color,
-                            }}
-                          />
-                        </div>
-                        <span
-                          className="text-xs font-semibold w-8 text-right"
-                          style={{ color: isDark ? "#888" : "#8C8FA7" }}
-                        >
-                          {progress}%
-                        </span>
-                      </div>
-
-                      {(order.status === "PENDING" ||
-                        order.status === "CONFIRMED") && (
+                      {(order.status === "PENDING" || order.status === "CONFIRMED") && (
                         <button
-                          onClick={() =>
-                            handleQuickStatusChange(
-                              order.id,
-                              "OUT_FOR_DELIVERY"
-                            )
-                          }
-                          className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold admin-nav-item cursor-pointer"
-                          style={{
-                            background: isDark
-                              ? "rgba(74,125,255,0.15)"
-                              : "#EEF2FF",
-                            color: "#4A7DFF",
-                          }}
+                          onClick={() => handleQuickStatusChange(order.id, "OUT_FOR_DELIVERY")}
+                          className="shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 transition-colors flex items-center gap-1 cursor-pointer"
+                          title="Dispatch to Rider"
                         >
                           <Bike size={14} />
+                          <span>Dispatch</span>
                         </button>
                       )}
                     </div>
@@ -1096,313 +925,61 @@ export default function AdminDashboardPage() {
               </div>
             )}
           </div>
+
+          <div className="pt-4 border-t border-slate-100 dark:border-zinc-800 flex items-center justify-between text-xs text-slate-500 dark:text-zinc-400">
+            <span>Showing latest {Math.min(orders.length, 5)} orders</span>
+            <Link
+              href="/orders"
+              className="font-bold text-slate-700 dark:text-zinc-200 hover:text-emerald-600"
+            >
+              Open Full Manager →
+            </Link>
+          </div>
         </div>
+      </div>
 
-        {/* ─── RIGHT COLUMN (Profile + Activity) ─── */}
-        <div className="w-full lg:w-[320px] shrink-0 space-y-6">
-          {/* Quick Stats Cards */}
+      {/* ─── 5. BOTTOM SECTION: MAP & INVENTORY HEALTH ─── */}
+      <div className="dash-fade-up grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+        <div className="lg:col-span-8 flex flex-col">
+          <BhilwaraOrderMap
+            orders={orders}
+            isDark={isDark}
+            compact={true}
+            onRefresh={() => fetchDashboardData(true)}
+          />
+        </div>
+        <div className="lg:col-span-4 flex flex-col space-y-6">
+          <StockHealthGauge products={products} isDark={isDark} />
+
+          {/* Quick Shortcuts */}
           <div
-            className="dash-fade-up dash-fade-up-d2 p-5 rounded-2xl"
+            className="p-5 rounded-2xl border transition-all flex-1"
             style={{
               background: isDark ? "#111118" : "#fff",
-              border: `1px solid ${isDark ? "#1e1e2a" : "#ECEDF1"}`,
-            }}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h3
-                className="text-sm font-semibold"
-                style={{ color: isDark ? "#fff" : "#1a1a2e" }}
-              >
-                Today&apos;s Summary
-              </h3>
-              <CalendarDays size={16} style={{ color: "#8C8FA7" }} />
-            </div>
-
-            <div className="space-y-3">
-              {/* Revenue */}
-              <div
-                className="flex items-center justify-between p-3 rounded-xl"
-                style={{
-                  background: isDark
-                    ? "rgba(74,125,255,0.06)"
-                    : "#F8F9FE",
-                }}
-              >
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-8 h-8 rounded-lg flex items-center justify-center"
-                    style={{
-                      background: isDark
-                        ? "rgba(74,125,255,0.15)"
-                        : "#EEF2FF",
-                    }}
-                  >
-                    <TrendingUp size={15} style={{ color: "#4A7DFF" }} />
-                  </div>
-                  <div>
-                    <p
-                      className="text-[11px] font-medium"
-                      style={{ color: "#8C8FA7" }}
-                    >
-                      Revenue
-                    </p>
-                    <p
-                      className="text-sm font-medium"
-                      style={{
-                        color: isDark ? "#fff" : "#1a1a2e",
-                      }}
-                    >
-                      ₹{todayRevenue.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
-                    </p>
-                  </div>
-                </div>
-                <ArrowUpRight size={16} style={{ color: "#10B981" }} />
-              </div>
-
-              {/* Orders */}
-              <div
-                className="flex items-center justify-between p-3 rounded-xl"
-                style={{
-                  background: isDark
-                    ? "rgba(16,185,129,0.06)"
-                    : "#F0FDF8",
-                }}
-              >
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-8 h-8 rounded-lg flex items-center justify-center"
-                    style={{
-                      background: isDark
-                        ? "rgba(16,185,129,0.15)"
-                        : "#ECFDF5",
-                    }}
-                  >
-                    <ShoppingBag
-                      size={15}
-                      style={{ color: "#10B981" }}
-                    />
-                  </div>
-                  <div>
-                    <p
-                      className="text-[11px] font-medium"
-                      style={{ color: "#8C8FA7" }}
-                    >
-                      Orders
-                    </p>
-                    <p
-                      className="text-sm font-medium"
-                      style={{
-                        color: isDark ? "#fff" : "#1a1a2e",
-                      }}
-                    >
-                      {todayOrders.length}
-                    </p>
-                  </div>
-                </div>
-                <span
-                  className="text-[11px] font-medium"
-                  style={{ color: "#8C8FA7" }}
-                >
-                  today
-                </span>
-              </div>
-
-              {/* Stock Alert */}
-              <Link
-                href="/inventory"
-                className="flex items-center justify-between p-3 rounded-xl admin-nav-item"
-                style={{
-                  background: isDark
-                    ? "rgba(239,68,68,0.06)"
-                    : "#FFF5F5",
-                }}
-              >
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-8 h-8 rounded-lg flex items-center justify-center"
-                    style={{
-                      background: isDark
-                        ? "rgba(239,68,68,0.15)"
-                        : "#FEE2E2",
-                    }}
-                  >
-                    <AlertTriangle
-                      size={15}
-                      style={{ color: "#EF4444" }}
-                    />
-                  </div>
-                  <div>
-                    <p
-                      className="text-[11px] font-medium"
-                      style={{ color: "#8C8FA7" }}
-                    >
-                      Out of Stock
-                    </p>
-                    <p
-                      className="text-sm font-medium"
-                      style={{
-                        color: isDark ? "#fff" : "#1a1a2e",
-                      }}
-                    >
-                      {outOfStockProducts.length}
-                    </p>
-                  </div>
-                </div>
-                <ChevronRight size={16} style={{ color: "#8C8FA7" }} />
-              </Link>
-            </div>
-          </div>
-
-          {/* ─── STOCK HEALTH GAUGE ─── */}
-          <div className="dash-fade-up dash-fade-up-d3">
-            <StockHealthGauge products={products} isDark={isDark} />
-          </div>
-
-          {/* ─── ACTIVITY FEED ─── */}
-          <div
-            className="dash-fade-up dash-fade-up-d4 p-5 rounded-2xl"
-            style={{
-              background: isDark ? "#111118" : "#fff",
-              border: `1px solid ${isDark ? "#1e1e2a" : "#ECEDF1"}`,
-            }}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h3
-                className="text-sm font-semibold"
-                style={{ color: isDark ? "#fff" : "#1a1a2e" }}
-              >
-                Activity
-              </h3>
-              <Activity size={16} style={{ color: "#8C8FA7" }} />
-            </div>
-
-            {activityFeed.length === 0 ? (
-              <p
-                className="text-xs text-center py-6"
-                style={{ color: "#8C8FA7" }}
-              >
-                No recent activity
-              </p>
-            ) : (
-              <div className="space-y-4">
-                {activityFeed.map((item, index) => (
-                  <div
-                    key={index}
-                    className="flex items-start gap-3"
-                  >
-                    <div
-                      className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-medium"
-                      style={{
-                        background: `${avatarColors[index % avatarColors.length]}18`,
-                        color: avatarColors[index % avatarColors.length],
-                      }}
-                    >
-                      {item.initial}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[12px] leading-relaxed">
-                        <span
-                          className="font-semibold"
-                          style={{
-                            color: isDark ? "#e4e4e7" : "#1a1a2e",
-                          }}
-                        >
-                          {item.name}
-                        </span>{" "}
-                        <span style={{ color: "#8C8FA7" }}>
-                          {item.message}
-                        </span>
-                      </p>
-                      <span
-                        className="text-[10px] font-medium"
-                        style={{ color: isDark ? "#444" : "#BFC1D0" }}
-                      >
-                        {item.time}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* ─── QUICK LINKS ─── */}
-          <div
-            className="dash-fade-up dash-fade-up-d5 p-5 rounded-2xl"
-            style={{
-              background: isDark ? "#111118" : "#fff",
-              border: `1px solid ${isDark ? "#1e1e2a" : "#ECEDF1"}`,
+              borderColor: isDark ? "#1e1e2a" : "#ECEDF1",
             }}
           >
             <h3
-              className="text-sm font-semibold mb-3"
-              style={{ color: isDark ? "#fff" : "#1a1a2e" }}
+              className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400 mb-3"
             >
-              Quick Actions
+              Operations Quick Links
             </h3>
             <div className="grid grid-cols-2 gap-2">
               {[
-                {
-                  name: "Orders",
-                  href: "/orders",
-                  icon: ShoppingBag,
-                  color: "#4A7DFF",
-                },
-                {
-                  name: "Stock",
-                  href: "/inventory",
-                  icon: Package,
-                  color: "#10B981",
-                },
-                {
-                  name: "Delivery Boys",
-                  href: "/riders",
-                  icon: Bike,
-                  color: "#8B5CF6",
-                },
-                {
-                  name: "Assignments",
-                  href: "/deliveries",
-                  icon: Clock,
-                  color: "#06B6D4",
-                },
-                {
-                  name: "Excel Import",
-                  href: "/import",
-                  icon: FileSpreadsheet,
-                  color: "#F59E0B",
-                },
-                {
-                  name: "Order Heatmap",
-                  href: "/order-map",
-                  icon: MapPin,
-                  color: "#EF4444",
-                },
+                { name: "Live Orders", href: "/orders", icon: ShoppingBag, color: "#10B981" },
+                { name: "Godown Stock", href: "/inventory", icon: Package, color: "#3B82F6" },
+                { name: "Riders Fleet", href: "/riders", icon: Bike, color: "#8B5CF6" },
+                { name: "Assignments", href: "/deliveries", icon: Clock, color: "#06B6D4" },
+                { name: "Excel Import", href: "/import", icon: FileSpreadsheet, color: "#F59E0B" },
+                { name: "Order Map", href: "/order-map", icon: MapPin, color: "#EF4444" },
               ].map((item) => (
                 <Link
                   key={item.name}
                   href={item.href}
-                  className="flex items-center gap-2 p-3 rounded-xl text-xs font-medium admin-nav-item"
-                  style={{
-                    background: isDark
-                      ? "rgba(255,255,255,0.02)"
-                      : "#FAFBFC",
-                    color: isDark ? "#888" : "#6B6E80",
-                    border: `1px solid ${isDark ? "#1a1a26" : "#F0F1F5"}`,
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = isDark
-                      ? "rgba(255,255,255,0.04)"
-                      : "#F5F6FA";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = isDark
-                      ? "rgba(255,255,255,0.02)"
-                      : "#FAFBFC";
-                  }}
+                  className="flex items-center gap-2 p-2.5 rounded-xl text-xs font-bold hover:bg-slate-50 dark:hover:bg-zinc-800/60 border border-slate-100 dark:border-zinc-800 transition-all"
                 >
                   <item.icon size={15} style={{ color: item.color }} />
-                  <span>{item.name}</span>
+                  <span className="text-slate-700 dark:text-zinc-200">{item.name}</span>
                 </Link>
               ))}
             </div>
@@ -1412,3 +989,4 @@ export default function AdminDashboardPage() {
     </div>
   );
 }
+
