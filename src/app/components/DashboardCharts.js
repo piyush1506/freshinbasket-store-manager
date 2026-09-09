@@ -391,65 +391,259 @@ export function RevenueTrendChart({ orders = [], isDark }) {
 }
 
 /* ─────────────────────────────────────────────────────────────
-   2. CATEGORY DISTRIBUTION DONUT CHART (SVG Donut)
+   2. CATEGORY DISTRIBUTION DONUT CHART & DETAILED BREAKDOWN
 ───────────────────────────────────────────────────────────── */
 export function CategoryDistributionChart({ orders = [], products = [], isDark }) {
   const [hoveredCategory, setHoveredCategory] = useState(null);
+  const [metricMode, setMetricMode] = useState("revenue"); // 'revenue' | 'units'
+  const [selectedCategoryDetail, setSelectedCategoryDetail] = useState(null);
 
-  // Compute category sales distribution
-  const { categoryData, totalUnitsSold } = useMemo(() => {
+  // Build high-accuracy product lookup
+  const productLookup = useMemo(() => {
+    const map = new Map();
+    products.forEach((p) => {
+      if (p.id) map.set(p.id, p);
+      if (p.name) map.set(p.name.toLowerCase().trim(), p);
+    });
+    return map;
+  }, [products]);
+
+  // Compute category sales distribution with full details
+  const { categoryData, totalRevenue, totalUnitsSold, activeCategoryCount } = useMemo(() => {
     const catMap = {};
+    let totalRev = 0;
     let totalUnits = 0;
 
-    // 1. Tally units sold from orders
+    // Helper: guess category from product name if not tagged
+    const guessCategory = (name = "") => {
+      const lower = name.toLowerCase();
+      if (
+        lower.includes("milk") ||
+        lower.includes("paneer") ||
+        lower.includes("ghee") ||
+        lower.includes("curd") ||
+        lower.includes("butter") ||
+        lower.includes("cheese") ||
+        lower.includes("dahi") ||
+        lower.includes("lassi")
+      ) {
+        return "Dairy & Milk";
+      }
+      if (
+        lower.includes("apple") ||
+        lower.includes("banana") ||
+        lower.includes("mango") ||
+        lower.includes("orange") ||
+        lower.includes("papaya") ||
+        lower.includes("grapes") ||
+        lower.includes("watermelon") ||
+        lower.includes("fruit") ||
+        lower.includes("pomegranate") ||
+        lower.includes("guava")
+      ) {
+        return "Fresh Fruits";
+      }
+      if (
+        lower.includes("atta") ||
+        lower.includes("flour") ||
+        lower.includes("rice") ||
+        lower.includes("dal") ||
+        lower.includes("oil") ||
+        lower.includes("sugar") ||
+        lower.includes("salt") ||
+        lower.includes("masala") ||
+        lower.includes("spice") ||
+        lower.includes("chana") ||
+        lower.includes("besan") ||
+        lower.includes("poha") ||
+        lower.includes("suji")
+      ) {
+        return "Staples & Grocery";
+      }
+      if (
+        lower.includes("snack") ||
+        lower.includes("biscuit") ||
+        lower.includes("namkeen") ||
+        lower.includes("chips") ||
+        lower.includes("cookie") ||
+        lower.includes("bhujia") ||
+        lower.includes("munch") ||
+        lower.includes("chocolate")
+      ) {
+        return "Snacks & Packaged Food";
+      }
+      if (
+        lower.includes("soap") ||
+        lower.includes("wash") ||
+        lower.includes("clean") ||
+        lower.includes("detergent") ||
+        lower.includes("shampoo") ||
+        lower.includes("colgate") ||
+        lower.includes("paste") ||
+        lower.includes("harpic") ||
+        lower.includes("surf")
+      ) {
+        return "Household & Personal Care";
+      }
+      if (
+        lower.includes("potato") ||
+        lower.includes("aloo") ||
+        lower.includes("onion") ||
+        lower.includes("pyaz") ||
+        lower.includes("tomato") ||
+        lower.includes("tamatar") ||
+        lower.includes("chilli") ||
+        lower.includes("mirch") ||
+        lower.includes("ginger") ||
+        lower.includes("adrak") ||
+        lower.includes("garlic") ||
+        lower.includes("lahsun") ||
+        lower.includes("bhindi") ||
+        lower.includes("gobi") ||
+        lower.includes("palak") ||
+        lower.includes("coriander") ||
+        lower.includes("lemon") ||
+        lower.includes("matar") ||
+        lower.includes("carrot") ||
+        lower.includes("capsicum") ||
+        lower.includes("cucumber") ||
+        lower.includes("kheera")
+      ) {
+        return "Fresh Vegetables";
+      }
+      return "Daily Essentials";
+    };
+
+    // 1. Tally units and revenue sold from non-cancelled orders
     orders.forEach((order) => {
       if (order.status !== "CANCELLED" && Array.isArray(order.items)) {
         order.items.forEach((item) => {
-          const catName =
+          const prodId = item.product || item.product_id;
+          const prodName = item.product_name || item.name || "Product";
+          const matchedProd =
+            productLookup.get(prodId) || productLookup.get(prodName.toLowerCase().trim());
+
+          let catName =
+            (matchedProd?.category_names && matchedProd.category_names[0]) ||
+            matchedProd?.section_name ||
+            matchedProd?.category?.name ||
+            matchedProd?.category_name ||
             item.category_name ||
-            item.product?.category_name ||
-            item.product?.category?.name ||
-            "Fresh Vegetables";
+            guessCategory(prodName);
+
+          if (!catName || catName === "null" || catName === "undefined") {
+            catName = guessCategory(prodName);
+          }
+
           const qty = parseFloat(item.quantity || 1);
-          const revenue = parseFloat(item.total_price || (item.unit_price || item.price || 0) * qty);
+          const unitPrice = parseFloat(item.unit_price || item.price || 0);
+          const revenue = parseFloat(item.total_price || unitPrice * qty);
 
           if (!catMap[catName]) {
-            catMap[catName] = { name: catName, units: 0, revenue: 0 };
+            catMap[catName] = {
+              name: catName,
+              units: 0,
+              revenue: 0,
+              orderIds: new Set(),
+              products: {},
+            };
           }
+
           catMap[catName].units += qty;
           catMap[catName].revenue += revenue;
+          catMap[catName].orderIds.add(order.id || order.order_number);
+
+          // Track product breakdown
+          if (!catMap[catName].products[prodName]) {
+            catMap[catName].products[prodName] = {
+              name: prodName,
+              units: 0,
+              revenue: 0,
+              unitPrice: unitPrice > 0 ? unitPrice : (revenue / (qty || 1)),
+            };
+          }
+          catMap[catName].products[prodName].units += qty;
+          catMap[catName].products[prodName].revenue += revenue;
+
           totalUnits += qty;
+          totalRev += revenue;
         });
       }
     });
 
-    // Fallback: If no order items are parsed, compute from inventory products
+    // Fallback: If no order items are parsed, compute from inventory catalog
     if (totalUnits === 0 && products.length > 0) {
       products.forEach((p) => {
-        const catName = p.category?.name || p.category_name || "General Farm Produce";
+        const catName =
+          (p.category_names && p.category_names[0]) ||
+          p.section_name ||
+          p.category?.name ||
+          p.category_name ||
+          guessCategory(p.name);
+
         if (!catMap[catName]) {
-          catMap[catName] = { name: catName, units: 0, revenue: 0 };
+          catMap[catName] = {
+            name: catName,
+            units: 0,
+            revenue: 0,
+            orderIds: new Set(),
+            products: {},
+          };
         }
         catMap[catName].units += 1;
-        catMap[catName].revenue += parseFloat(p.price || 0);
+        const price = parseFloat(p.price || 0);
+        catMap[catName].revenue += price;
+        catMap[catName].products[p.name] = {
+          name: p.name,
+          units: 1,
+          revenue: price,
+          unitPrice: price,
+        };
+
         totalUnits += 1;
+        totalRev += price;
       });
     }
 
-    // Palette of vibrant colors
-    const colors = ["#10B981", "#3B82F6", "#F59E0B", "#8B5CF6", "#EC4899", "#06B6D4", "#F97316"];
+    // Palette of vibrant, harmonized colors
+    const colors = [
+      "#10B981", // Emerald
+      "#3B82F6", // Blue
+      "#F59E0B", // Amber
+      "#8B5CF6", // Purple
+      "#EC4899", // Pink
+      "#06B6D4", // Cyan
+      "#F97316", // Orange
+      "#14B8A6", // Teal
+      "#6366F1", // Indigo
+    ];
+
+    const sortKey = metricMode === "revenue" ? "revenue" : "units";
+    const totalBasis = metricMode === "revenue" ? totalRev : totalUnits;
 
     const sortedCats = Object.values(catMap)
-      .sort((a, b) => b.units - a.units)
-      .slice(0, 6)
-      .map((cat, idx) => ({
-        ...cat,
-        color: colors[idx % colors.length],
-        percentage: totalUnits > 0 ? Math.round((cat.units / totalUnits) * 100) : 0,
-      }));
+      .sort((a, b) => b[sortKey] - a[sortKey])
+      .map((cat, idx) => {
+        const value = metricMode === "revenue" ? cat.revenue : cat.units;
+        const percentage = totalBasis > 0 ? Math.round((value / totalBasis) * 100) : 0;
+        const topProducts = Object.values(cat.products).sort((a, b) => b.revenue - a.revenue);
 
-    return { categoryData: sortedCats, totalUnitsSold: totalUnits };
-  }, [orders, products]);
+        return {
+          ...cat,
+          color: colors[idx % colors.length],
+          percentage,
+          orderCount: cat.orderIds.size,
+          topProducts,
+        };
+      });
+
+    return {
+      categoryData: sortedCats,
+      totalRevenue: totalRev,
+      totalUnitsSold: totalUnits,
+      activeCategoryCount: sortedCats.length,
+    };
+  }, [orders, products, productLookup, metricMode]);
 
   // Donut Arc calculation
   const radius = 60;
@@ -466,28 +660,57 @@ export function CategoryDistributionChart({ orders = [], products = [], isDark }
 
   return (
     <div
-      className="p-5 sm:p-6 rounded-2xl border transition-all flex flex-col justify-between"
+      className="p-5 sm:p-6 rounded-2xl border transition-all flex flex-col justify-between relative"
       style={{
         background: isDark ? "#111118" : "#fff",
         borderColor: isDark ? "#1e1e2a" : "#ECEDF1",
       }}
     >
       <div>
-        <div className="flex items-center justify-between mb-4">
+        {/* Header with Metric Toggle */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center">
               <PieChart size={16} />
             </div>
-            <h3
-              className="text-base font-semibold tracking-tight"
-              style={{ color: isDark ? "#fff" : "#1a1a2e" }}
-            >
-              Category Sales Share
-            </h3>
+            <div>
+              <h3
+                className="text-base font-semibold tracking-tight"
+                style={{ color: isDark ? "#fff" : "#1a1a2e" }}
+              >
+                Category Sales Share
+              </h3>
+              <p className="text-[11px] text-slate-500 dark:text-zinc-400">
+                {activeCategoryCount} Active Categories • Click any for item breakdown
+              </p>
+            </div>
           </div>
-          <span className="text-[11px] font-semibold text-slate-500 dark:text-zinc-400">
-            Top Categories
-          </span>
+
+          {/* Toggle: Revenue vs Units */}
+          <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100 dark:bg-zinc-800/80 text-xs font-semibold self-start sm:self-auto">
+            <button
+              type="button"
+              onClick={() => setMetricMode("revenue")}
+              className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                metricMode === "revenue"
+                  ? "bg-white dark:bg-zinc-900 text-emerald-600 dark:text-emerald-400 shadow-xs"
+                  : "text-slate-600 dark:text-zinc-400 hover:text-slate-900"
+              }`}
+            >
+              By Revenue (₹)
+            </button>
+            <button
+              type="button"
+              onClick={() => setMetricMode("units")}
+              className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                metricMode === "units"
+                  ? "bg-white dark:bg-zinc-900 text-indigo-600 dark:text-indigo-400 shadow-xs"
+                  : "text-slate-600 dark:text-zinc-400 hover:text-slate-900"
+              }`}
+            >
+              By Quantity
+            </button>
+          </div>
         </div>
 
         {/* Donut graphic + Center stat */}
@@ -510,30 +733,37 @@ export function CategoryDistributionChart({ orders = [], products = [], isDark }
                   r={radius}
                   fill="none"
                   stroke={arc.color}
-                  strokeWidth={hoveredCategory === arc.name ? strokeWidth + 4 : strokeWidth}
+                  strokeWidth={
+                    hoveredCategory === arc.name || selectedCategoryDetail?.name === arc.name
+                      ? strokeWidth + 4
+                      : strokeWidth
+                  }
                   strokeDasharray={arc.strokeDasharray}
                   strokeDashoffset={arc.strokeDashoffset}
                   strokeLinecap="round"
                   className="transition-all duration-300 cursor-pointer"
                   onMouseEnter={() => setHoveredCategory(arc.name)}
                   onMouseLeave={() => setHoveredCategory(null)}
+                  onClick={() => setSelectedCategoryDetail(arc)}
                 />
               ))}
             </svg>
 
             {/* Inner Center Label */}
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
-              <span className="text-xl font-bold text-slate-800 dark:text-white">
-                {totalUnitsSold}
+              <span className="text-base sm:text-lg font-bold text-slate-800 dark:text-white">
+                {metricMode === "revenue"
+                  ? `₹${totalRevenue >= 1000 ? (totalRevenue / 1000).toFixed(1) + "k" : totalRevenue}`
+                  : totalUnitsSold}
               </span>
               <span className="text-[10px] font-semibold uppercase text-slate-500 dark:text-zinc-400">
-                Units
+                {metricMode === "revenue" ? "Total Sales" : "Units Sold"}
               </span>
             </div>
           </div>
 
           {/* Legend Items */}
-          <div className="flex-1 w-full space-y-2">
+          <div className="flex-1 w-full space-y-2 max-h-56 overflow-y-auto pr-1">
             {categoryData.length === 0 ? (
               <p className="text-xs text-slate-500 italic">No sales categories recorded yet.</p>
             ) : (
@@ -542,22 +772,37 @@ export function CategoryDistributionChart({ orders = [], products = [], isDark }
                   key={idx}
                   onMouseEnter={() => setHoveredCategory(cat.name)}
                   onMouseLeave={() => setHoveredCategory(null)}
-                  className={`flex items-center justify-between p-2 rounded-xl text-xs transition-colors cursor-pointer ${
-                    hoveredCategory === cat.name
-                      ? "bg-slate-100 dark:bg-zinc-800"
-                      : "hover:bg-slate-50 dark:hover:bg-zinc-900"
+                  onClick={() => setSelectedCategoryDetail(cat)}
+                  className={`flex items-center justify-between p-2 rounded-xl text-xs transition-all cursor-pointer border ${
+                    selectedCategoryDetail?.name === cat.name
+                      ? "bg-slate-100 dark:bg-zinc-800 border-indigo-400/50 shadow-xs"
+                      : hoveredCategory === cat.name
+                      ? "bg-slate-50 dark:bg-zinc-800/60 border-slate-200 dark:border-zinc-700"
+                      : "border-transparent hover:bg-slate-50/60 dark:hover:bg-zinc-900/60"
                   }`}
                 >
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: cat.color }} />
-                    <span className="font-semibold text-slate-700 dark:text-zinc-200 truncate">
-                      {cat.name}
-                    </span>
+                    <span
+                      className="w-2.5 h-2.5 rounded-full shrink-0 shadow-xs"
+                      style={{ background: cat.color }}
+                    />
+                    <div className="truncate">
+                      <span className="font-semibold text-slate-700 dark:text-zinc-200 block truncate">
+                        {cat.name}
+                      </span>
+                      <span className="text-[10px] text-slate-400 dark:text-zinc-500">
+                        {cat.topProducts.length} items sold • {cat.orderCount} orders
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0 font-bold">
-                    <span className="text-slate-800 dark:text-zinc-100">{cat.percentage}%</span>
-                    <span className="text-[10px] text-slate-500 dark:text-zinc-400">
-                      ({Math.round(cat.units)} items)
+                  <div className="text-right shrink-0">
+                    <span className="font-bold text-slate-800 dark:text-zinc-100 block">
+                      {cat.percentage}%
+                    </span>
+                    <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                      {metricMode === "revenue"
+                        ? `₹${Math.round(cat.revenue).toLocaleString("en-IN")}`
+                        : `${Math.round(cat.units)} units`}
                     </span>
                   </div>
                 </div>
@@ -566,9 +811,100 @@ export function CategoryDistributionChart({ orders = [], products = [], isDark }
           </div>
         </div>
       </div>
+
+      {/* ─── Drill-Down Modal / Drawer for Category Details ─── */}
+      {selectedCategoryDetail && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200 dark:border-zinc-800 max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[85vh] flex flex-col">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-2.5">
+                <span
+                  className="w-4 h-4 rounded-full shrink-0"
+                  style={{ background: selectedCategoryDetail.color }}
+                />
+                <div>
+                  <h4 className="text-base font-bold text-slate-800 dark:text-white">
+                    {selectedCategoryDetail.name} Breakdown
+                  </h4>
+                  <p className="text-xs text-slate-500 dark:text-zinc-400">
+                    Detailed sales distribution and top-selling products
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedCategoryDetail(null)}
+                className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-zinc-800 text-slate-500 hover:text-slate-800 dark:hover:text-white flex items-center justify-center font-bold text-xs cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Quick Stats Grid */}
+            <div className="grid grid-cols-3 gap-3 p-3 bg-slate-50 dark:bg-zinc-800/50 rounded-xl border border-slate-200 dark:border-zinc-800 text-xs">
+              <div>
+                <span className="text-[10px] text-slate-400 uppercase font-bold block">
+                  Total Sales
+                </span>
+                <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                  ₹{Math.round(selectedCategoryDetail.revenue).toLocaleString("en-IN")}
+                </span>
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 uppercase font-bold block">
+                  Units Sold
+                </span>
+                <span className="text-sm font-bold text-slate-800 dark:text-zinc-100">
+                  {Math.round(selectedCategoryDetail.units)} items
+                </span>
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 uppercase font-bold block">
+                  Market Share
+                </span>
+                <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">
+                  {selectedCategoryDetail.percentage}% of store
+                </span>
+              </div>
+            </div>
+
+            {/* Product Itemized List */}
+            <div className="flex-1 overflow-y-auto space-y-2 pr-1 min-h-[160px]">
+              <span className="text-xs font-bold text-slate-700 dark:text-zinc-300 block mb-2">
+                Products Sold ({selectedCategoryDetail.topProducts.length})
+              </span>
+              {selectedCategoryDetail.topProducts.map((prod, pIdx) => (
+                <div
+                  key={pIdx}
+                  className="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 text-xs"
+                >
+                  <div className="min-w-0 flex-1 pr-2">
+                    <p className="font-semibold text-slate-800 dark:text-zinc-100 truncate">
+                      {prod.name}
+                    </p>
+                    <p className="text-[11px] text-slate-400 dark:text-zinc-500">
+                      Rate: ₹{Math.round(prod.unitPrice)}/unit • Qty: {prod.units}
+                    </p>
+                  </div>
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400 text-xs shrink-0">
+                    ₹{Math.round(prod.revenue).toLocaleString("en-IN")}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <button
+              onClick={() => setSelectedCategoryDetail(null)}
+              className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-zinc-100 text-white dark:text-slate-900 font-semibold text-xs rounded-xl transition-all cursor-pointer"
+            >
+              Close Details
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
 
 /* ─────────────────────────────────────────────────────────────
    3. HOURLY DISPATCH & PEAK ORDER DISTRIBUTION CHART
