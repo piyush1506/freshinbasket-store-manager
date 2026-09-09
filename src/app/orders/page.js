@@ -275,7 +275,7 @@ export default function AdminOrdersPage() {
       {/* HEADER SECTION */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 dash-fade-up">
         <div>
-          <h1 className="bg-gradient-to-r from-emerald-600 to-green-500 bg-clip-text text-transparent drop-shadow-sm text-2xl sm:text-3xl font-semibold flex items-center gap-2 tracking-tight">
+          <h1 className="bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-300 bg-clip-text text-transparent drop-shadow-sm text-2xl sm:text-3xl font-semibold flex items-center gap-2 tracking-tight">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#4A7DFF] to-[#6C5CE7] flex items-center justify-center">
               <ShoppingBag className="text-white w-5 h-5" />
             </div>
@@ -389,17 +389,17 @@ export default function AdminOrdersPage() {
                   <div className="flex items-start justify-between gap-3 mb-3">
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="font-bold text-base text-slate-700 dark:text-white tracking-tight">
+                        <span className="font-semibold text-base text-slate-800 dark:text-white tracking-tight">
                           {order.order_number || `FIB-${order.id}`}
                         </span>
-                        <div className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[10px] font-semibold tracking-wide uppercase ${cfg.badge}`}>
+                        <div className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[10px] font-medium tracking-wide uppercase ${cfg.badge}`}>
                           <div className={`w-1.5 h-1.5 rounded-full ${cfg.dot} animate-pulse`} />
                           {cfg.label}
                         </div>
                       </div>
-                      <div className="flex items-center gap-3 text-xs text-slate-700 dark:text-zinc-200 font-semibold">
+                      <div className="flex items-center gap-3 text-xs text-slate-600 dark:text-zinc-300 font-medium">
                         <span className="flex items-center gap-1.5 bg-slate-100 dark:bg-[#1a1a26] px-2 py-1 rounded-md">
-                          <Clock size={12} className="text-slate-700 dark:text-zinc-300" />
+                          <Clock size={12} className="text-slate-600 dark:text-zinc-300" />
                           {order.created_at
                             ? new Date(order.created_at).toLocaleString([], {
                                 dateStyle: "short",
@@ -408,7 +408,7 @@ export default function AdminOrdersPage() {
                             : ""}
                         </span>
                         {order.delivery_slot && (
-                          <span className="flex items-center gap-1.5 bg-[#4A7DFF]/10 text-[#4A7DFF] dark:bg-[#4A7DFF]/20 px-2 py-1 rounded-md font-semibold">
+                          <span className="flex items-center gap-1.5 bg-[#4A7DFF]/10 text-[#4A7DFF] dark:bg-[#4A7DFF]/20 px-2 py-1 rounded-md font-medium">
                             <Calendar size={12} />
                             {order.delivery_slot}
                           </span>
@@ -417,10 +417,10 @@ export default function AdminOrdersPage() {
                     </div>
 
                     <div className="text-right shrink-0">
-                      <p className="text-xl sm:text-2xl font-bold text-slate-700 dark:text-white tracking-tight">
+                      <p className="text-xl sm:text-2xl font-semibold text-slate-800 dark:text-white tracking-tight">
                         ₹{parseFloat(order.total_amount || 0).toFixed(0)}
                       </p>
-                      <p className="text-[10px] font-bold text-slate-700 dark:text-zinc-300 uppercase tracking-wider mt-0.5">
+                      <p className="text-[10px] font-medium text-slate-500 dark:text-zinc-400 uppercase tracking-wider mt-0.5">
                         {order.payment_method === "COD" ? "Cash" : "Paid"} • {(order.items || []).length} items
                       </p>
                     </div>
@@ -430,10 +430,10 @@ export default function AdminOrdersPage() {
                   <div className="bg-slate-50 dark:bg-[#1a1a26]/50 rounded-xl p-3 mb-3 border border-slate-200 dark:border-[#252530]">
                     <div className="flex items-center justify-between mb-3">
                       <div>
-                        <p className="text-sm font-bold text-slate-700 dark:text-white">
+                        <p className="text-sm font-semibold text-slate-800 dark:text-white">
                           {order.customer?.first_name || order.customer?.username || "Valued Customer"}
                         </p>
-                        <p className="text-xs text-slate-700 dark:text-zinc-200 font-mono mt-0.5 font-semibold">
+                        <p className="text-xs text-slate-600 dark:text-zinc-300 font-mono mt-0.5 font-medium">
                           {order.customer?.phone_number || "No phone number"}
                         </p>
                       </div>
@@ -464,7 +464,7 @@ export default function AdminOrdersPage() {
                         </div>
                       )}
                     </div>
-                    <div className="flex items-start gap-2 text-[11px] font-semibold text-slate-700 dark:text-zinc-200 leading-snug">
+                    <div className="flex items-start gap-2 text-[11px] font-medium text-slate-700 dark:text-zinc-200 leading-snug">
                       <MapPin size={14} className="text-[#4A7DFF] shrink-0 mt-0.5" />
                       <span>{order.delivery_address || "Delivery address not provided."}</span>
                     </div>

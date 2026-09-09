@@ -649,7 +649,7 @@ export default function AdminDashboardPage() {
       <div className="dash-fade-up flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1
-            className="text-2xl sm:text-3xl font-extrabold tracking-tight bg-gradient-to-r from-emerald-600 via-teal-600 to-green-500 bg-clip-text text-transparent"
+            className="text-2xl sm:text-3xl font-semibold tracking-tight bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-500 bg-clip-text text-transparent"
           >
             Operations Overview
           </h1>
@@ -659,7 +659,7 @@ export default function AdminDashboardPage() {
         </div>
         <div className="flex items-center gap-3">
           <div
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold shadow-xs"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium shadow-xs"
             style={{
               background: isDark
                 ? isHistorical
@@ -686,13 +686,13 @@ export default function AdminDashboardPage() {
               }`,
             }}
           >
-            <CalendarDays size={14} className="text-emerald-500" />
+            <CalendarDays size={14} className="text-blue-500" />
             <span>{dateLabel}</span>
           </div>
           <button
             onClick={() => fetchDashboardData(false)}
             disabled={refreshing}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all cursor-pointer disabled:opacity-60"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition-all cursor-pointer disabled:opacity-60"
           >
             <RefreshCw size={13} className={refreshing ? "animate-spin" : ""} />
             <span>{refreshing ? "Syncing..." : "Sync Live"}</span>
@@ -711,18 +711,18 @@ export default function AdminDashboardPage() {
           }}
         >
           <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400">
+            <span className="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-zinc-400">
               Today&apos;s Revenue
             </span>
-            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center">
               <TrendingUp size={16} />
             </div>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
+            <span className="text-2xl sm:text-3xl font-semibold text-slate-900 dark:text-white">
               ₹{todayRevenue.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
             </span>
-            <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md">
+            <span className="text-[11px] font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded-md">
               {todayOrders.length} orders
             </span>
           </div>
@@ -730,6 +730,7 @@ export default function AdminDashboardPage() {
             Non-cancelled sales volume for {currentDate}
           </p>
         </div>
+
 
         {/* Delivered Orders */}
         <div
@@ -740,7 +741,7 @@ export default function AdminDashboardPage() {
           }}
         >
           <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400">
+            <span className="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-zinc-400">
               Completed Deliveries
             </span>
             <div className="w-8 h-8 rounded-xl bg-teal-500/10 text-teal-500 flex items-center justify-center">
@@ -748,7 +749,7 @@ export default function AdminDashboardPage() {
             </div>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
+            <span className="text-2xl sm:text-3xl font-semibold text-slate-900 dark:text-white">
               {deliveredToday}
             </span>
             <span className="text-xs font-medium text-slate-500 dark:text-zinc-400">
@@ -757,7 +758,7 @@ export default function AdminDashboardPage() {
           </div>
           <div className="mt-3 h-1.5 rounded-full overflow-hidden bg-slate-100 dark:bg-zinc-800">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-500"
+              className="h-full rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-500"
               style={{
                 width: `${totalNonCancelled > 0 ? (deliveredToday / totalNonCancelled) * 100 : 0}%`,
               }}
@@ -774,7 +775,7 @@ export default function AdminDashboardPage() {
           }}
         >
           <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400">
+            <span className="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-zinc-400">
               Active Orders
             </span>
             <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center">
@@ -782,7 +783,7 @@ export default function AdminDashboardPage() {
             </div>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
+            <span className="text-2xl sm:text-3xl font-semibold text-slate-900 dark:text-white">
               {pendingOrders.length + outForDeliveryOrders.length}
             </span>
             <span className="text-xs font-medium text-slate-500 dark:text-zinc-400">
@@ -790,10 +791,10 @@ export default function AdminDashboardPage() {
             </span>
           </div>
           <div className="flex items-center gap-2 mt-2">
-            <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-md">
+            <span className="text-[11px] font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-md">
               {pendingOrders.length} pending
             </span>
-            <span className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded-md">
+            <span className="text-[11px] font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded-md">
               {outForDeliveryOrders.length} on road
             </span>
           </div>
@@ -808,17 +809,17 @@ export default function AdminDashboardPage() {
           }}
         >
           <div>
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400">
+            <span className="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-zinc-400">
               Fulfillment Rate
             </span>
             <div className="mt-2 flex items-baseline gap-1">
-              <span className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
+              <span className="text-2xl sm:text-3xl font-semibold text-slate-900 dark:text-white">
                 {efficiency}%
               </span>
             </div>
             <Link
               href="/inventory"
-              className="text-[11px] font-semibold text-rose-500 hover:underline block mt-1"
+              className="text-[11px] font-medium text-rose-500 hover:underline block mt-1"
             >
               {outOfStockProducts.length > 0
                 ? `⚠ ${outOfStockProducts.length} items out of stock`
@@ -870,7 +871,7 @@ export default function AdminDashboardPage() {
               </div>
               <Link
                 href="/orders"
-                className="flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline"
+                className="flex items-center gap-1 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline"
               >
                 <span>Live Orders</span>
                 <ChevronRight size={14} />
@@ -894,17 +895,17 @@ export default function AdminDashboardPage() {
                         borderColor: isDark ? "#1e1e2a" : "#F0F1F5",
                       }}
                     >
-                      <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
+                      <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-600 flex items-center justify-center shrink-0">
                         <ShoppingBag size={15} />
                       </div>
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-slate-900 dark:text-zinc-100 truncate">
+                          <span className="text-xs font-semibold text-slate-900 dark:text-zinc-100 truncate">
                             {order.order_number || `Order #${order.id}`}
                           </span>
                           <span
-                            className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                            className="text-[10px] font-medium px-2 py-0.5 rounded-full"
                             style={{
                               background: config.bg,
                               color: config.color,
@@ -923,7 +924,7 @@ export default function AdminDashboardPage() {
                       {(order.status === "PENDING" || order.status === "CONFIRMED") && (
                         <button
                           onClick={() => handleQuickStatusChange(order.id, "OUT_FOR_DELIVERY")}
-                          className="shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 transition-colors flex items-center gap-1 cursor-pointer"
+                          className="shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 hover:bg-blue-100 transition-colors flex items-center gap-1 cursor-pointer"
                           title="Dispatch to Rider"
                         >
                           <Bike size={14} />
@@ -941,11 +942,12 @@ export default function AdminDashboardPage() {
             <span>Showing latest {Math.min(orders.length, 5)} orders</span>
             <Link
               href="/orders"
-              className="font-bold text-slate-700 dark:text-zinc-200 hover:text-emerald-600"
+              className="font-medium text-slate-700 dark:text-zinc-200 hover:text-blue-600"
             >
               Open Full Manager →
             </Link>
           </div>
+
         </div>
       </div>
 
@@ -971,13 +973,13 @@ export default function AdminDashboardPage() {
             }}
           >
             <h3
-              className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400 mb-3"
+              className="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-zinc-400 mb-3"
             >
               Operations Quick Links
             </h3>
             <div className="grid grid-cols-2 gap-2">
               {[
-                { name: "Live Orders", href: "/orders", icon: ShoppingBag, color: "#10B981" },
+                { name: "Live Orders", href: "/orders", icon: ShoppingBag, color: "#2563EB" },
                 { name: "Godown Stock", href: "/inventory", icon: Package, color: "#3B82F6" },
                 { name: "Riders Fleet", href: "/riders", icon: Bike, color: "#8B5CF6" },
                 { name: "Assignments", href: "/deliveries", icon: Clock, color: "#06B6D4" },
@@ -987,7 +989,7 @@ export default function AdminDashboardPage() {
                 <Link
                   key={item.name}
                   href={item.href}
-                  className="flex items-center gap-2 p-2.5 rounded-xl text-xs font-bold hover:bg-slate-50 dark:hover:bg-zinc-800/60 border border-slate-100 dark:border-zinc-800 transition-all"
+                  className="flex items-center gap-2 p-2.5 rounded-xl text-xs font-medium hover:bg-slate-50 dark:hover:bg-zinc-800/60 border border-slate-100 dark:border-zinc-800 transition-all"
                 >
                   <item.icon size={15} style={{ color: item.color }} />
                   <span className="text-slate-700 dark:text-zinc-200">{item.name}</span>

@@ -166,16 +166,16 @@ export function RevenueTrendChart({ orders = [], isDark }) {
         const prepaidY = padding.top + chartH - prepaidH;
         const codY = prepaidY - codH;
 
-        // Prepaid segment (Blue/Indigo)
-        ctx.fillStyle = isHovered ? "#3B82F6" : isDark ? "rgba(59,130,246,0.85)" : "#60A5FA";
+        // Prepaid segment (Deep Blue)
+        ctx.fillStyle = isHovered ? "#2563EB" : isDark ? "rgba(37,99,235,0.85)" : "#3B82F6";
         if (prepaidH > 0) {
           ctx.beginPath();
           ctx.rect(barX, prepaidY, barWidth, prepaidH);
           ctx.fill();
         }
 
-        // COD segment (Emerald/Green)
-        ctx.fillStyle = isHovered ? "#10B981" : isDark ? "rgba(16,185,129,0.85)" : "#34D399";
+        // COD segment (Indigo / Cyan Blue)
+        ctx.fillStyle = isHovered ? "#6366F1" : isDark ? "rgba(99,102,241,0.85)" : "#818CF8";
         if (codH > 0) {
           ctx.beginPath();
           ctx.rect(barX, codY, barWidth, codH);
@@ -183,7 +183,7 @@ export function RevenueTrendChart({ orders = [], isDark }) {
         }
       } else {
         // Single Bar
-        const barColor = viewMode === "cod" ? "#10B981" : "#3B82F6";
+        const barColor = viewMode === "cod" ? "#6366F1" : "#2563EB";
         ctx.fillStyle = isHovered ? barColor : isDark ? `${barColor}bb` : `${barColor}dd`;
         ctx.beginPath();
         if (ctx.roundRect) {
@@ -251,11 +251,11 @@ export function RevenueTrendChart({ orders = [], isDark }) {
 
       // Revenue Values
       ctx.font = "bold 11px Inter, sans-serif";
-      ctx.fillStyle = "#10B981";
+      ctx.fillStyle = "#2563EB";
       ctx.fillText(textTotal, boxX + 10, boxY + 47);
 
       ctx.font = "10px Inter, sans-serif";
-      ctx.fillStyle = isDark ? "#34d399" : "#059669";
+      ctx.fillStyle = isDark ? "#818cf8" : "#4f46e5";
       ctx.fillText(`• ${textCOD}`, boxX + 10, boxY + 63);
 
       ctx.fillStyle = isDark ? "#60a5fa" : "#2563eb";
@@ -297,7 +297,7 @@ export function RevenueTrendChart({ orders = [], isDark }) {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
         <div>
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+            <div className="w-7 h-7 rounded-lg bg-blue-500/10 text-blue-600 flex items-center justify-center">
               <DollarSign size={16} />
             </div>
             <h3
@@ -312,71 +312,72 @@ export function RevenueTrendChart({ orders = [], isDark }) {
           </p>
         </div>
 
-        {/* View mode toggle */}
-        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-100 dark:bg-zinc-800/80 text-xs font-semibold">
-          <button
-            type="button"
-            onClick={() => setViewMode("all")}
-            className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
-              viewMode === "all"
-                ? "bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-xs"
-                : "text-slate-600 dark:text-zinc-400 hover:text-slate-900"
-            }`}
-          >
-            All Sales
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewMode("cod")}
-            className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
-              viewMode === "cod"
-                ? "bg-white dark:bg-zinc-900 text-emerald-600 dark:text-emerald-400 shadow-xs"
-                : "text-slate-600 dark:text-zinc-400 hover:text-slate-900"
-            }`}
-          >
-            COD Only
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewMode("prepaid")}
-            className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
-              viewMode === "prepaid"
-                ? "bg-white dark:bg-zinc-900 text-blue-600 dark:text-blue-400 shadow-xs"
-                : "text-slate-600 dark:text-zinc-400 hover:text-slate-900"
-            }`}
-          >
-            Online
-          </button>
-        </div>
+      {/* View mode toggle */}
+      <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-100 dark:bg-zinc-800/80 text-xs font-medium">
+        <button
+          type="button"
+          onClick={() => setViewMode("all")}
+          className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+            viewMode === "all"
+              ? "bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-xs font-medium"
+              : "text-slate-600 dark:text-zinc-400 hover:text-slate-900"
+          }`}
+        >
+          All Sales
+        </button>
+        <button
+          type="button"
+          onClick={() => setViewMode("cod")}
+          className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+            viewMode === "cod"
+              ? "bg-white dark:bg-zinc-900 text-indigo-600 dark:text-indigo-400 shadow-xs font-medium"
+              : "text-slate-600 dark:text-zinc-400 hover:text-slate-900"
+          }`}
+        >
+          COD
+        </button>
+        <button
+          type="button"
+          onClick={() => setViewMode("prepaid")}
+          className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+            viewMode === "prepaid"
+              ? "bg-white dark:bg-zinc-900 text-blue-600 dark:text-blue-400 shadow-xs font-medium"
+              : "text-slate-600 dark:text-zinc-400 hover:text-slate-900"
+          }`}
+        >
+          Online
+        </button>
       </div>
+    </div>
 
-      {/* Highlights Metrics */}
-      <div className="grid grid-cols-3 gap-3 mb-4 p-3 rounded-xl bg-slate-50 dark:bg-zinc-900/60 border border-slate-200/80 dark:border-zinc-800 text-xs">
-        <div>
-          <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-zinc-400 tracking-wider block">
-            14-Day Sales
-          </span>
-          <span className="font-bold text-slate-800 dark:text-zinc-100 text-sm sm:text-base">
-            ₹{totalRev.toLocaleString("en-IN")}
-          </span>
-        </div>
-        <div>
-          <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-zinc-400 tracking-wider block">
-            Daily Average
-          </span>
-          <span className="font-bold text-slate-800 dark:text-zinc-100 text-sm sm:text-base">
-            ₹{avgDailyRev.toLocaleString("en-IN")}
-          </span>
-        </div>
-        <div>
-          <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-zinc-400 tracking-wider block">
-            Peak Day
-          </span>
-          <span className="font-bold text-emerald-600 dark:text-emerald-400 text-sm sm:text-base">
-            ₹{topDayRev.toLocaleString("en-IN")}
-          </span>
-        </div>
+    {/* Highlights Metrics */}
+    <div className="grid grid-cols-3 gap-3 mb-4 p-3 rounded-xl bg-slate-50 dark:bg-zinc-900/60 border border-slate-200/80 dark:border-zinc-800 text-xs">
+      <div>
+        <span className="text-[10px] uppercase font-medium text-slate-500 dark:text-zinc-400 tracking-wider block">
+          14-Day Sales
+        </span>
+        <span className="font-semibold text-slate-800 dark:text-zinc-100 text-sm sm:text-base">
+          ₹{totalRev.toLocaleString("en-IN")}
+        </span>
       </div>
+      <div>
+        <span className="text-[10px] uppercase font-medium text-slate-500 dark:text-zinc-400 tracking-wider block">
+          Daily Average
+        </span>
+        <span className="font-semibold text-slate-800 dark:text-zinc-100 text-sm sm:text-base">
+          ₹{avgDailyRev.toLocaleString("en-IN")}
+        </span>
+      </div>
+      <div>
+        <span className="text-[10px] uppercase font-medium text-slate-500 dark:text-zinc-400 tracking-wider block">
+          Peak Day
+        </span>
+        <span className="font-semibold text-blue-600 dark:text-blue-400 text-sm sm:text-base">
+          ₹{topDayRev.toLocaleString("en-IN")}
+        </span>
+      </div>
+    </div>
+
 
       {/* Chart Canvas */}
       <canvas
@@ -398,26 +399,65 @@ export function CategoryDistributionChart({ orders = [], products = [], categori
   const [metricMode, setMetricMode] = useState("revenue"); // 'revenue' | 'units'
   const [selectedCategoryDetail, setSelectedCategoryDetail] = useState(null);
 
-  // Build canonical category list from database
-  const canonicalCategories = useMemo(() => {
+  // Build canonical category map from database
+  const { canonicalCategories, categoryByIdMap, categoryBySlugMap } = useMemo(() => {
+    const list = [];
+    const idMap = new Map();
+    const slugMap = new Map();
+
+    const formatDisplay = (name = "") => {
+      const lower = name.toLowerCase().trim();
+      if (lower === "vegetable" || lower === "vegetables") return "Vegetables";
+      if (lower === "fruits" || lower === "fruit") return "Fruits";
+      if (lower === "premium fruits" || lower === "premium-fruits") return "Premium Fruits";
+      return name.charAt(0).toUpperCase() + name.slice(1);
+    };
+
     if (Array.isArray(categories) && categories.length > 0) {
-      return categories.map((c) => ({
-        id: c.id,
-        name: c.name?.trim() || "General",
-        slug: (c.slug || c.name || "").toLowerCase().trim(),
-        displayName:
-          c.name?.charAt(0).toUpperCase() + c.name?.slice(1).toLowerCase(),
-      }));
+      categories.forEach((c) => {
+        const item = {
+          id: c.id,
+          name: c.name?.trim() || "General",
+          slug: (c.slug || c.name || "").toLowerCase().trim(),
+          displayName: formatDisplay(c.name),
+        };
+        list.push(item);
+        if (c.id !== undefined && c.id !== null) {
+          idMap.set(String(c.id), item.displayName);
+          idMap.set(Number(c.id), item.displayName);
+        }
+        if (item.slug) slugMap.set(item.slug, item.displayName);
+        if (item.name) slugMap.set(item.name.toLowerCase(), item.displayName);
+      });
     }
-    return [];
+
+    return {
+      canonicalCategories: list,
+      categoryByIdMap: idMap,
+      categoryBySlugMap: slugMap,
+    };
   }, [categories]);
 
-  // Build high-accuracy product lookup
+  // Build high-accuracy multi-index product lookup
   const productLookup = useMemo(() => {
     const map = new Map();
     products.forEach((p) => {
-      if (p.id) map.set(p.id, p);
-      if (p.name) map.set(p.name.toLowerCase().trim(), p);
+      if (p.id !== undefined && p.id !== null) {
+        map.set(String(p.id), p);
+        map.set(Number(p.id), p);
+      }
+      if (p.name) {
+        const lowerName = p.name.toLowerCase().trim();
+        map.set(lowerName, p);
+        // Also index stripped name without parentheses (e.g., "coconut(narial)" -> "coconut")
+        const stripped = lowerName.replace(/\(.*?\)/g, "").trim();
+        if (stripped && stripped !== lowerName) {
+          map.set(stripped, p);
+        }
+      }
+      if (p.slug) {
+        map.set(p.slug.toLowerCase().trim(), p);
+      }
     });
     return map;
   }, [products]);
@@ -428,51 +468,185 @@ export function CategoryDistributionChart({ orders = [], products = [], categori
     let totalRev = 0;
     let totalUnits = 0;
 
-    // Helper: Normalize category name to one of the store's official categories
-    const getCanonicalName = (rawName = "", prodName = "") => {
-      const clean = (rawName || "").toLowerCase().trim();
-
-      // If we have official store categories, match directly
-      if (canonicalCategories.length > 0) {
-        const directMatch = canonicalCategories.find(
-          (c) =>
-            c.slug === clean ||
-            c.name.toLowerCase() === clean ||
-            clean.includes(c.slug) ||
-            clean.includes(c.name.toLowerCase())
-        );
-        if (directMatch) return directMatch.displayName;
-
-        // Try matching product name to category slug/name
-        const prodClean = (prodName || "").toLowerCase();
-        const prodMatch = canonicalCategories.find(
-          (c) => prodClean.includes(c.slug) || prodClean.includes(c.name.toLowerCase())
-        );
-        if (prodMatch) return prodMatch.displayName;
-
-        // Smart keyword fallback to one of the canonical categories
-        for (const c of canonicalCategories) {
-          const s = c.slug;
-          if (
-            (s.includes("veg") && (prodClean.includes("potato") || prodClean.includes("onion") || prodClean.includes("tomato") || prodClean.includes("mirch") || prodClean.includes("gobi") || prodClean.includes("bhindi") || prodClean.includes("palak") || prodClean.includes("ginger") || prodClean.includes("garlic") || prodClean.includes("lemon") || prodClean.includes("chilli") || prodClean.includes("coriander") || prodClean.includes("matar") || prodClean.includes("carrot") || prodClean.includes("cucumber"))) ||
-            (s.includes("fruit") && (prodClean.includes("apple") || prodClean.includes("banana") || prodClean.includes("mango") || prodClean.includes("orange") || prodClean.includes("papaya") || prodClean.includes("grapes") || prodClean.includes("watermelon") || prodClean.includes("pomegranate") || prodClean.includes("guava"))) ||
-            (s.includes("dairy") && (prodClean.includes("milk") || prodClean.includes("paneer") || prodClean.includes("ghee") || prodClean.includes("curd") || prodClean.includes("butter") || prodClean.includes("cheese") || prodClean.includes("dahi")))
-          ) {
-            return c.displayName;
-          }
+    // Helper: Determine exact category from product and item data
+    const resolveCategoryName = (item, matchedProd) => {
+      // 1. If matched product has explicit category IDs in array: [7, 10, 13]
+      if (matchedProd?.categories && Array.isArray(matchedProd.categories) && matchedProd.categories.length > 0) {
+        for (const catId of matchedProd.categories) {
+          const resolved = categoryByIdMap.get(catId);
+          if (resolved) return resolved;
         }
-
-        // Default to first canonical category
-        return canonicalCategories[0].displayName;
       }
 
-      // Fallback if categories API isn't populated yet: normalize raw name
-      if (clean.includes("fruit")) return "Fruits";
-      if (clean.includes("veg")) return "Vegetables";
-      if (clean.includes("dairy") || clean.includes("milk")) return "Dairy & Milk";
-      if (clean.includes("staple") || clean.includes("grocery")) return "Staples & Grocery";
+      // 2. If matched product has explicit category names array: ["fruits"]
+      if (matchedProd?.category_names && Array.isArray(matchedProd.category_names) && matchedProd.category_names.length > 0) {
+        for (const rawName of matchedProd.category_names) {
+          const lower = String(rawName).toLowerCase().trim();
+          if (categoryBySlugMap.has(lower)) return categoryBySlugMap.get(lower);
+          if (lower.includes("premium")) return "Premium Fruits";
+          if (lower.includes("fruit")) return "Fruits";
+          if (lower.includes("veg")) return "Vegetables";
+        }
+      }
 
-      return clean ? clean.charAt(0).toUpperCase() + clean.slice(1) : "General Produce";
+      // 3. If matched product has category object or ID
+      if (matchedProd?.category) {
+        const cVal = matchedProd.category;
+        if (typeof cVal === "object" && cVal?.name) {
+          const lower = cVal.name.toLowerCase().trim();
+          if (categoryBySlugMap.has(lower)) return categoryBySlugMap.get(lower);
+        } else {
+          const resolved = categoryByIdMap.get(cVal);
+          if (resolved) return resolved;
+        }
+      }
+
+      // 4. If item in order already has category_name
+      if (item?.category_name) {
+        const lower = String(item.category_name).toLowerCase().trim();
+        if (categoryBySlugMap.has(lower)) return categoryBySlugMap.get(lower);
+      }
+
+      // 5. Intelligent Produce Name Analyzer (English + Hindi Romanized)
+      const pName = (item.product_name || item.name || matchedProd?.name || "").toLowerCase();
+
+      // Check Premium Fruits
+      if (
+        pName.includes("dragon") ||
+        pName.includes("kiwi") ||
+        pName.includes("avacado") ||
+        pName.includes("avocado") ||
+        pName.includes("kinnow") ||
+        pName.includes("red grapes") ||
+        pName.includes("sweet imli") ||
+        pName.includes("mini orange") ||
+        pName.includes("gala apple") ||
+        pName.includes("cherry") ||
+        pName.includes("blueberry")
+      ) {
+        return "Premium Fruits";
+      }
+
+      // Check Fruits (including Nariyal / Coconut / Khajur / Dates / Melons)
+      if (
+        pName.includes("nariyal") ||
+        pName.includes("narial") ||
+        pName.includes("coconut") ||
+        pName.includes("shriphal") ||
+        pName.includes("khajur") ||
+        pName.includes("date") ||
+        pName.includes("banana") ||
+        pName.includes("kela") ||
+        pName.includes("apple") ||
+        pName.includes("seb") ||
+        pName.includes("mango") ||
+        pName.includes("aam") ||
+        pName.includes("orange") ||
+        pName.includes("santra") ||
+        pName.includes("papaya") ||
+        pName.includes("papita") ||
+        pName.includes("grapes") ||
+        pName.includes("angoor") ||
+        pName.includes("watermelon") ||
+        pName.includes("tarbuj") ||
+        pName.includes("waternalon") ||
+        pName.includes("pomegranate") ||
+        pName.includes("anar") ||
+        pName.includes("guava") ||
+        pName.includes("amrood") ||
+        pName.includes("jamfal") ||
+        pName.includes("pineapple") ||
+        pName.includes("ananas") ||
+        pName.includes("strawberry") ||
+        pName.includes("chiku") ||
+        pName.includes("chikoo") ||
+        pName.includes("sapota") ||
+        pName.includes("naakh") ||
+        pName.includes("pear") ||
+        pName.includes("peach") ||
+        pName.includes("plum") ||
+        pName.includes("litchi") ||
+        pName.includes("lychee") ||
+        pName.includes("mosambi") ||
+        pName.includes("fruit")
+      ) {
+        return "Fruits";
+      }
+
+      // Check Vegetables
+      if (
+        pName.includes("onion") ||
+        pName.includes("pyaj") ||
+        pName.includes("pyaz") ||
+        pName.includes("potato") ||
+        pName.includes("aalu") ||
+        pName.includes("aloo") ||
+        pName.includes("tomato") ||
+        pName.includes("tamato") ||
+        pName.includes("tamatar") ||
+        pName.includes("ginger") ||
+        pName.includes("adrak") ||
+        pName.includes("garlic") ||
+        pName.includes("lahsun") ||
+        pName.includes("chilli") ||
+        pName.includes("mirch") ||
+        pName.includes("mirchi") ||
+        pName.includes("capsicum") ||
+        pName.includes("palak") ||
+        pName.includes("spinach") ||
+        pName.includes("ridge gourd") ||
+        pName.includes("tuari") ||
+        pName.includes("turai") ||
+        pName.includes("tori") ||
+        pName.includes("brinjal") ||
+        pName.includes("bangan") ||
+        pName.includes("baingan") ||
+        pName.includes("eggplant") ||
+        pName.includes("bitter gourd") ||
+        pName.includes("karela") ||
+        pName.includes("kachra") ||
+        pName.includes("loki") ||
+        pName.includes("lauki") ||
+        pName.includes("bottle gourd") ||
+        pName.includes("taro root") ||
+        pName.includes("arbi") ||
+        pName.includes("matar") ||
+        pName.includes("peas") ||
+        pName.includes("coriander") ||
+        pName.includes("dhaniya") ||
+        pName.includes("dhania") ||
+        pName.includes("mint") ||
+        pName.includes("pudina") ||
+        pName.includes("khira") ||
+        pName.includes("kheera") ||
+        pName.includes("kakdi") ||
+        pName.includes("cucumber") ||
+        pName.includes("ladyfinger") ||
+        pName.includes("bhindi") ||
+        pName.includes("okra") ||
+        pName.includes("lemon") ||
+        pName.includes("leamon") ||
+        pName.includes("nimbu") ||
+        pName.includes("gobi") ||
+        pName.includes("gobhi") ||
+        pName.includes("cauliflower") ||
+        pName.includes("cabbage") ||
+        pName.includes("methi") ||
+        pName.includes("carrot") ||
+        pName.includes("gajar") ||
+        pName.includes("radish") ||
+        pName.includes("mooli") ||
+        pName.includes("beetroot") ||
+        pName.includes("chukandar") ||
+        pName.includes("kaddu") ||
+        pName.includes("pumpkin") ||
+        pName.includes("veg")
+      ) {
+        return "Vegetables";
+      }
+
+      // 6. Default to first category or Vegetables
+      return canonicalCategories[0]?.displayName || "Vegetables";
     };
 
     // 1. Tally units and revenue sold from non-cancelled orders
@@ -481,18 +655,21 @@ export function CategoryDistributionChart({ orders = [], products = [], categori
         order.items.forEach((item) => {
           const prodId = item.product || item.product_id;
           const prodName = item.product_name || item.name || "Product";
+          
+          // Try multiple lookup strategies for matching catalog product
+          const lowerName = prodName.toLowerCase().trim();
+          const strippedName = lowerName.replace(/\(.*?\)/g, "").trim();
+
           const matchedProd =
-            productLookup.get(prodId) || productLookup.get(prodName.toLowerCase().trim());
+            productLookup.get(prodId) ||
+            productLookup.get(lowerName) ||
+            productLookup.get(strippedName) ||
+            products.find((p) => {
+              const pLower = (p.name || "").toLowerCase();
+              return lowerName.includes(pLower) || pLower.includes(strippedName);
+            });
 
-          // Read actual category from database (Do NOT use section_name)
-          const rawCatName =
-            (matchedProd?.category_names && matchedProd.category_names[0]) ||
-            matchedProd?.category?.name ||
-            matchedProd?.category_name ||
-            item.category_name ||
-            "";
-
-          const catName = getCanonicalName(rawCatName, prodName);
+          const catName = resolveCategoryName(item, matchedProd);
 
           const qty = parseFloat(item.quantity || 1);
           const unitPrice = parseFloat(item.unit_price || item.price || 0);
@@ -533,13 +710,7 @@ export function CategoryDistributionChart({ orders = [], products = [], categori
     // Fallback: If no order items are parsed, compute from inventory catalog
     if (totalUnits === 0 && products.length > 0) {
       products.forEach((p) => {
-        const rawCatName =
-          (p.category_names && p.category_names[0]) ||
-          p.category?.name ||
-          p.category_name ||
-          "";
-
-        const catName = getCanonicalName(rawCatName, p.name);
+        const catName = resolveCategoryName({ name: p.name }, p);
 
         if (!catMap[catName]) {
           catMap[catName] = {
@@ -566,15 +737,12 @@ export function CategoryDistributionChart({ orders = [], products = [], categori
     }
 
     // Palette of vibrant, harmonized colors
-    const colors = [
-      "#10B981", // Emerald
-      "#3B82F6", // Blue
-      "#F59E0B", // Amber
-      "#8B5CF6", // Purple
-      "#EC4899", // Pink
-      "#06B6D4", // Cyan
-      "#F97316", // Orange
-    ];
+    const categoryColors = {
+      "Vegetables": "#10B981",       // Emerald
+      "Fruits": "#3B82F6",           // Royal Blue
+      "Premium Fruits": "#8B5CF6",   // Violet / Purple
+    };
+    const fallbackColors = ["#10B981", "#3B82F6", "#8B5CF6", "#F59E0B", "#EC4899", "#06B6D4"];
 
     const sortKey = metricMode === "revenue" ? "revenue" : "units";
     const totalBasis = metricMode === "revenue" ? totalRev : totalUnits;
@@ -588,7 +756,7 @@ export function CategoryDistributionChart({ orders = [], products = [], categori
 
         return {
           ...cat,
-          color: colors[idx % colors.length],
+          color: categoryColors[cat.name] || fallbackColors[idx % fallbackColors.length],
           percentage,
           orderCount: cat.orderIds.size,
           topProducts,
@@ -646,13 +814,13 @@ export function CategoryDistributionChart({ orders = [], products = [], categori
           </div>
 
           {/* Toggle: Revenue vs Units */}
-          <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100 dark:bg-zinc-800/80 text-xs font-semibold self-start sm:self-auto">
+          <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100 dark:bg-zinc-800/80 text-xs font-medium self-start sm:self-auto">
             <button
               type="button"
               onClick={() => setMetricMode("revenue")}
               className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
                 metricMode === "revenue"
-                  ? "bg-white dark:bg-zinc-900 text-emerald-600 dark:text-emerald-400 shadow-xs"
+                  ? "bg-white dark:bg-zinc-900 text-blue-600 dark:text-blue-400 shadow-xs font-medium"
                   : "text-slate-600 dark:text-zinc-400 hover:text-slate-900"
               }`}
             >
@@ -663,7 +831,7 @@ export function CategoryDistributionChart({ orders = [], products = [], categori
               onClick={() => setMetricMode("units")}
               className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
                 metricMode === "units"
-                  ? "bg-white dark:bg-zinc-900 text-indigo-600 dark:text-indigo-400 shadow-xs"
+                  ? "bg-white dark:bg-zinc-900 text-indigo-600 dark:text-indigo-400 shadow-xs font-medium"
                   : "text-slate-600 dark:text-zinc-400 hover:text-slate-900"
               }`}
             >
@@ -710,12 +878,12 @@ export function CategoryDistributionChart({ orders = [], products = [], categori
 
             {/* Inner Center Label */}
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none px-2">
-              <span className="text-base sm:text-lg font-black text-slate-800 dark:text-white leading-none">
+              <span className="text-base sm:text-lg font-semibold text-slate-800 dark:text-white leading-none">
                 {metricMode === "revenue"
                   ? `₹${totalRevenue >= 1000 ? (totalRevenue / 1000).toFixed(1) + "k" : Math.round(totalRevenue)}`
                   : `${Math.round(totalUnitsSold)}`}
               </span>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-400 mt-1">
+              <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400 dark:text-zinc-400 mt-1">
                 {metricMode === "revenue" ? "Total Sales" : "Units Sold"}
               </span>
             </div>
@@ -746,7 +914,7 @@ export function CategoryDistributionChart({ orders = [], products = [], categori
                       style={{ background: cat.color }}
                     />
                     <div className="min-w-0">
-                      <span className="font-bold text-slate-800 dark:text-zinc-100 block truncate">
+                      <span className="font-medium text-slate-800 dark:text-zinc-100 block truncate">
                         {cat.name}
                       </span>
                       <span className="text-[11px] text-slate-400 dark:text-zinc-400">
@@ -755,10 +923,10 @@ export function CategoryDistributionChart({ orders = [], products = [], categori
                     </div>
                   </div>
                   <div className="text-right shrink-0">
-                    <span className="font-black text-slate-800 dark:text-zinc-100 block">
+                    <span className="font-semibold text-slate-800 dark:text-zinc-100 block">
                       {cat.percentage}%
                     </span>
-                    <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                    <span className="text-[11px] font-medium text-blue-600 dark:text-blue-400">
                       {metricMode === "revenue"
                         ? `₹${Math.round(cat.revenue).toLocaleString("en-IN")}`
                         : `${Math.round(cat.units)} units`}
@@ -782,7 +950,7 @@ export function CategoryDistributionChart({ orders = [], products = [], categori
                   style={{ background: selectedCategoryDetail.color }}
                 />
                 <div>
-                  <h4 className="text-base font-bold text-slate-800 dark:text-white">
+                  <h4 className="text-base font-semibold text-slate-800 dark:text-white">
                     {selectedCategoryDetail.name} Breakdown
                   </h4>
                   <p className="text-xs text-slate-500 dark:text-zinc-400">
@@ -792,7 +960,7 @@ export function CategoryDistributionChart({ orders = [], products = [], categori
               </div>
               <button
                 onClick={() => setSelectedCategoryDetail(null)}
-                className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-zinc-800 text-slate-500 hover:text-slate-800 dark:hover:text-white flex items-center justify-center font-bold text-xs cursor-pointer"
+                className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-zinc-800 text-slate-500 hover:text-slate-800 dark:hover:text-white flex items-center justify-center font-medium text-xs cursor-pointer"
               >
                 ✕
               </button>
@@ -801,26 +969,26 @@ export function CategoryDistributionChart({ orders = [], products = [], categori
             {/* Quick Stats Grid */}
             <div className="grid grid-cols-3 gap-3 p-3 bg-slate-50 dark:bg-zinc-800/50 rounded-xl border border-slate-200 dark:border-zinc-800 text-xs">
               <div>
-                <span className="text-[10px] text-slate-400 uppercase font-bold block">
+                <span className="text-[10px] text-slate-400 uppercase font-medium block">
                   Total Sales
                 </span>
-                <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">
                   ₹{Math.round(selectedCategoryDetail.revenue).toLocaleString("en-IN")}
                 </span>
               </div>
               <div>
-                <span className="text-[10px] text-slate-400 uppercase font-bold block">
+                <span className="text-[10px] text-slate-400 uppercase font-medium block">
                   Units Sold
                 </span>
-                <span className="text-sm font-bold text-slate-800 dark:text-zinc-100">
+                <span className="text-sm font-semibold text-slate-800 dark:text-zinc-100">
                   {Math.round(selectedCategoryDetail.units)} items
                 </span>
               </div>
               <div>
-                <span className="text-[10px] text-slate-400 uppercase font-bold block">
+                <span className="text-[10px] text-slate-400 uppercase font-medium block">
                   Market Share
                 </span>
-                <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">
+                <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">
                   {selectedCategoryDetail.percentage}% of store
                 </span>
               </div>
@@ -828,7 +996,7 @@ export function CategoryDistributionChart({ orders = [], products = [], categori
 
             {/* Product Itemized List */}
             <div className="flex-1 overflow-y-auto space-y-2 pr-1 min-h-[160px]">
-              <span className="text-xs font-bold text-slate-700 dark:text-zinc-300 block mb-2">
+              <span className="text-xs font-medium text-slate-700 dark:text-zinc-300 block mb-2">
                 Products Sold ({selectedCategoryDetail.topProducts.length})
               </span>
               {selectedCategoryDetail.topProducts.map((prod, pIdx) => (
@@ -837,14 +1005,14 @@ export function CategoryDistributionChart({ orders = [], products = [], categori
                   className="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 text-xs"
                 >
                   <div className="min-w-0 flex-1 pr-2">
-                    <p className="font-semibold text-slate-800 dark:text-zinc-100 truncate">
+                    <p className="font-medium text-slate-800 dark:text-zinc-100 truncate">
                       {prod.name}
                     </p>
                     <p className="text-[11px] text-slate-400 dark:text-zinc-500">
                       Rate: ₹{Math.round(prod.unitPrice)}/unit • Qty: {prod.units}
                     </p>
                   </div>
-                  <span className="font-bold text-emerald-600 dark:text-emerald-400 text-xs shrink-0">
+                  <span className="font-semibold text-blue-600 dark:text-blue-400 text-xs shrink-0">
                     ₹{Math.round(prod.revenue).toLocaleString("en-IN")}
                   </span>
                 </div>
@@ -853,7 +1021,7 @@ export function CategoryDistributionChart({ orders = [], products = [], categori
 
             <button
               onClick={() => setSelectedCategoryDetail(null)}
-              className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-zinc-100 text-white dark:text-slate-900 font-semibold text-xs rounded-xl transition-all cursor-pointer"
+              className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-zinc-100 text-white dark:text-slate-900 font-medium text-xs rounded-xl transition-all cursor-pointer"
             >
               Close Details
             </button>
@@ -951,14 +1119,14 @@ export function HourlyDistributionChart({ orders = [], isDark }) {
             className="group cursor-pointer"
           >
             <div className="flex items-center justify-between text-xs mb-1">
-              <span className="font-semibold text-slate-700 dark:text-zinc-200 flex items-center gap-1.5">
+              <span className="font-medium text-slate-700 dark:text-zinc-200 flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full" style={{ background: slot.color }} />
                 <span>{slot.label}</span>
                 <span className="text-[10px] text-slate-500 dark:text-zinc-400 hidden sm:inline">
                   • {slot.name}
                 </span>
               </span>
-              <span className="font-bold text-slate-800 dark:text-zinc-100">
+              <span className="font-medium text-slate-800 dark:text-zinc-100">
                 {slot.count} orders ({slot.revenue > 0 ? `₹${slot.revenue.toLocaleString("en-IN")}` : "0"})
               </span>
             </div>
@@ -1023,7 +1191,7 @@ export function StockHealthGauge({ products = [], isDark }) {
     >
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+          <div className="w-7 h-7 rounded-lg bg-blue-500/10 text-blue-600 flex items-center justify-center">
             <Package size={16} />
           </div>
           <h3
@@ -1035,7 +1203,7 @@ export function StockHealthGauge({ products = [], isDark }) {
         </div>
         <Link
           href="/inventory"
-          className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
+          className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline"
         >
           Manage Stock →
         </Link>
@@ -1063,10 +1231,10 @@ export function StockHealthGauge({ products = [], isDark }) {
       {/* Breakdown Cards */}
       <div className="grid grid-cols-3 gap-2.5 text-xs">
         <div className="p-2.5 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/50">
-          <span className="font-semibold text-emerald-700 dark:text-emerald-300 block text-[11px]">
+          <span className="font-medium text-emerald-700 dark:text-emerald-300 block text-[11px]">
             In Stock
           </span>
-          <span className="text-base font-bold text-emerald-900 dark:text-emerald-200">
+          <span className="text-base font-semibold text-emerald-900 dark:text-emerald-200">
             {inStock}
           </span>
           <span className="text-[10px] text-emerald-600 dark:text-emerald-400 block mt-0.5">
@@ -1075,10 +1243,10 @@ export function StockHealthGauge({ products = [], isDark }) {
         </div>
 
         <div className="p-2.5 rounded-xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/50">
-          <span className="font-semibold text-amber-700 dark:text-amber-300 block text-[11px]">
+          <span className="font-medium text-amber-700 dark:text-amber-300 block text-[11px]">
             Low (≤10)
           </span>
-          <span className="text-base font-bold text-amber-900 dark:text-amber-200">
+          <span className="text-base font-semibold text-amber-900 dark:text-amber-200">
             {lowStock}
           </span>
           <span className="text-[10px] text-amber-600 dark:text-amber-400 block mt-0.5">
@@ -1087,10 +1255,10 @@ export function StockHealthGauge({ products = [], isDark }) {
         </div>
 
         <div className="p-2.5 rounded-xl bg-red-50/70 dark:bg-red-950/30 border border-red-200/80 dark:border-red-800/50">
-          <span className="font-semibold text-red-700 dark:text-red-300 block text-[11px]">
+          <span className="font-medium text-red-700 dark:text-red-300 block text-[11px]">
             Out of Stock
           </span>
-          <span className="text-base font-bold text-red-900 dark:text-red-200">
+          <span className="text-base font-semibold text-red-900 dark:text-red-200">
             {outOfStock}
           </span>
           <span className="text-[10px] text-red-600 dark:text-red-400 block mt-0.5">

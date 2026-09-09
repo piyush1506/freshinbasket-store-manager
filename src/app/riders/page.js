@@ -498,7 +498,7 @@ export default function AdminRidersPage({ defaultTab }) {
               {activeTab === "boys" ? <Bike size={22} /> : <ClipboardList size={22} />}
             </div>
             <div>
-              <h1 className="bg-gradient-to-r from-emerald-600 to-green-500 bg-clip-text text-transparent drop-shadow-sm text-xl sm:text-2xl font-semibold tracking-tight">
+              <h1 className="bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-300 bg-clip-text text-transparent drop-shadow-sm text-xl sm:text-2xl font-semibold tracking-tight">
                 {activeTab === "boys" ? "Delivery Fleet & Boys" : "Order Delivery Assignments"}
               </h1>
               <p className="text-xs font-medium text-gray-700 dark:text-zinc-300 mt-0.5">
@@ -994,7 +994,7 @@ export default function AdminRidersPage({ defaultTab }) {
                                 onClick={() => handleSaveOrderChanges(order.id, assignment?.id, currentStatus, currentRiderId, hasStatusChanged, hasRiderChanged)}
                                 className={`w-full sm:w-auto px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs active:scale-95 ${
                                   hasChanges && !isSaving
-                                    ? "bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer ring-2 ring-emerald-500/30 shadow-md font-bold"
+                                    ? "bg-blue-600 hover:bg-blue-700 text-white cursor-pointer ring-2 ring-blue-500/30 shadow-md font-bold"
                                     : "bg-slate-100 dark:bg-zinc-800 text-slate-400 dark:text-zinc-500 border border-slate-200 dark:border-zinc-700 cursor-not-allowed opacity-70"
                                 }`}
                                 title={hasChanges ? "Click to save changes" : "No unsaved changes"}

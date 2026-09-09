@@ -133,14 +133,14 @@ function AdminLoginForm() {
       {/* Top Header */}
       <header className="w-full max-w-5xl mx-auto px-6 py-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center font-black text-sm text-white shadow-md">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center font-black text-sm text-white shadow-md shadow-blue-500/20">
             F
           </div>
           <div>
             <span className="text-sm font-bold tracking-tight text-slate-900 dark:text-white">
               FreshInBasket
             </span>
-            <span className="ml-2 text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800">
+            <span className="ml-2 text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
               Admin Console
             </span>
           </div>
@@ -221,7 +221,7 @@ function AdminLoginForm() {
                 required
                 autoFocus
                 autoComplete="username"
-                className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900/70 text-slate-800 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-600 focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
+                className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900/70 text-slate-800 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-600 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
               />
             </div>
 
@@ -250,7 +250,7 @@ function AdminLoginForm() {
                   placeholder="••••••••••••"
                   required
                   autoComplete="current-password"
-                  className="w-full px-3.5 py-2.5 pr-10 text-xs rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900/70 text-slate-800 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-600 focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
+                  className="w-full px-3.5 py-2.5 pr-10 text-xs rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900/70 text-slate-800 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-600 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                 />
                 <button
                   type="button"
@@ -269,7 +269,7 @@ function AdminLoginForm() {
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-3.5 h-3.5 rounded text-emerald-600 focus:ring-emerald-500"
+                  className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500"
                 />
                 <span className="text-slate-600 dark:text-zinc-400">Remember on this device</span>
               </label>
@@ -282,7 +282,7 @@ function AdminLoginForm() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full mt-2 py-2.5 px-4 rounded-xl text-xs font-semibold transition-all duration-150 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm active:scale-[0.99] disabled:opacity-50 cursor-pointer"
+              className="w-full mt-2 py-2.5 px-4 rounded-xl text-xs font-semibold transition-all duration-150 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/20 active:scale-[0.99] disabled:opacity-50 cursor-pointer"
             >
               {loading ? (
                 <>
@@ -302,7 +302,7 @@ function AdminLoginForm() {
 
       <footer className="w-full max-w-5xl mx-auto px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-slate-400 dark:text-zinc-500">
         <div className="flex items-center gap-2">
-          <Shield size={12} className="text-emerald-500" />
+          <Shield size={12} className="text-blue-500" />
           <span>Restricted central control hub for FreshInBasket operations personnel.</span>
         </div>
         <div className="font-mono">FreshInBasket Admin v2.5</div>
@@ -316,7 +316,7 @@ export default function AdminLoginPage() {
     <Suspense
       fallback={
         <div className="min-h-screen bg-white dark:bg-[#0b0f17] flex items-center justify-center">
-          <Loader2 className="w-6 h-6 text-emerald-600 animate-spin" />
+          <Loader2 className="w-6 h-6 text-blue-600 animate-spin" />
         </div>
       }
     >
