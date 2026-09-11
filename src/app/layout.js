@@ -16,6 +16,7 @@ import {
   Volume2,
   VolumeX,
   Menu,
+  PlusCircle,
   X,
   ShieldCheck,
   Sun,
@@ -128,6 +129,7 @@ export default function RootLayout({ children }) {
   const navItems = [
     { name: "Dashboard", href: "/", icon: LayoutDashboard },
     { name: "Live Orders", href: "/orders", icon: ShoppingBag, badge: pendingCount },
+    { name: "Products", href: "/products", icon: Package },
     { name: "Order Map", href: "/order-map", icon: MapPin },
     { name: "Quick Stock", href: "/inventory", icon: Package },
     { name: "Delivery Boys", href: "/riders", icon: Bike },
@@ -138,6 +140,7 @@ export default function RootLayout({ children }) {
 
   const mobileBottomNav = [
     { name: "Dashboard", href: "/", icon: LayoutDashboard },
+    { name: "Products", href: "/products", icon: Package },
     { name: "Orders", href: "/orders", icon: ShoppingBag, badge: pendingCount },
     { name: "Boys", href: "/riders", icon: Bike },
     { name: "Assign", href: "/deliveries", icon: ClipboardList },
@@ -147,7 +150,7 @@ export default function RootLayout({ children }) {
 
   if (pathname === "/login") {
     return (
-      <html lang="en">
+      <html lang="en" className={isDark ? "dark" : ""}>
         <head>
           <title>FreshInBasket Admin | Authentication</title>
           <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
@@ -161,7 +164,7 @@ export default function RootLayout({ children }) {
   }
 
   return (
-    <html lang="en">
+    <html lang="en" className={isDark ? "dark" : ""}>
       <head>
         <title>FreshInBasket Admin Console</title>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
