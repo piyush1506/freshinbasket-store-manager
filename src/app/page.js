@@ -822,7 +822,7 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* ─── 3. MAIN ANALYTICS ROW (Revenue Chart & Category Donut) ─── */}
-      <div className="dash-fade-up grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+      <div className="dash-fade-up hidden md:grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
         <div className="lg:col-span-7 flex flex-col">
           <RevenueTrendChart orders={orders} isDark={isDark} />
         </div>
@@ -833,7 +833,7 @@ export default function AdminDashboardPage() {
 
 
       {/* ─── 4. OPERATIONAL INSIGHTS (Peak Hours & Live Orders) ─── */}
-      <div className="dash-fade-up grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+      <div className="dash-fade-up hidden md:grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
         {/* Hourly Peak Slots */}
         <div className="lg:col-span-6 flex flex-col">
           <HourlyDistributionChart orders={orders} isDark={isDark} />
