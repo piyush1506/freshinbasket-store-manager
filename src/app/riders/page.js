@@ -19,6 +19,7 @@ import {
   AlertCircle,
   Truck,
   ClipboardList,
+  Users,
   UserCheck,
   CreditCard,
   ChevronRight,
@@ -595,6 +596,32 @@ export default function AdminRidersPage({ defaultTab }) {
     }
   });
 
+  const today = new Date();
+  const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+  const endOfToday = startOfToday + 24 * 60 * 60 * 1000;
+
+  // Today's orders and revenue
+  const todayOrders = orders.filter((o) => {
+    if (!o.created_at) return false;
+    const t = new Date(o.created_at).getTime();
+    return t >= startOfToday && t < endOfToday;
+  });
+
+  const todayRevenue = todayOrders
+    .filter((o) => o.status !== "CANCELLED")
+    .reduce((sum, o) => sum + parseFloat(o.total_amount || 0), 0);
+
+  // Today Sign-up / new customer users
+  const todaySignups = allUsers.filter((u) => {
+    if (u.date_joined) {
+      const t = new Date(u.date_joined).getTime();
+      return t >= startOfToday && t < endOfToday;
+    }
+    return false;
+  }).length;
+
+  const totalCustomers = allUsers.filter((u) => u.role === "CUSTOMER" || !u.role).length;
+
   return (
     <div className="max-w-6xl mx-auto space-y-5 pb-12">
       {/* TOP HEADER */}
@@ -649,6 +676,7 @@ export default function AdminRidersPage({ defaultTab }) {
 
       {/* STATS OVERVIEW CARDS */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+        {/* Card 1: Total Delivery Fleet */}
         <div className="bg-white dark:bg-zinc-900 border border-blue-100 dark:border-blue-900/40 p-4 rounded-xl shadow-xs relative overflow-hidden">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
@@ -666,40 +694,43 @@ export default function AdminRidersPage({ defaultTab }) {
           </span>
         </div>
 
+        {/* Card 2: Today Sign-Up Users */}
+        <div className="bg-white dark:bg-zinc-900 border border-indigo-100 dark:border-indigo-900/40 p-4 rounded-xl shadow-xs relative overflow-hidden">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
+              Today Sign-Up Users
+            </span>
+            <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center border border-indigo-200 dark:border-indigo-800/60">
+              <Users size={18} />
+            </div>
+          </div>
+          <p className="text-2xl sm:text-3xl font-extrabold text-indigo-600 dark:text-indigo-400 mt-2">
+            {todaySignups}
+          </p>
+          <span className="text-[11px] text-indigo-600/80 dark:text-indigo-400/80 font-medium mt-1 inline-block">
+            {totalCustomers} total customers
+          </span>
+        </div>
+
+        {/* Card 3: Today's Orders */}
         <div className="bg-white dark:bg-zinc-900 border border-amber-100 dark:border-amber-900/40 p-4 rounded-xl shadow-xs relative overflow-hidden">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
-              Active Dispatches
+              Today&apos;s Orders
             </span>
             <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center border border-amber-200 dark:border-amber-800/60">
-              <Truck size={18} />
+              <ShoppingBag size={18} />
             </div>
           </div>
           <p className="text-2xl sm:text-3xl font-extrabold text-amber-600 dark:text-amber-400 mt-2">
-            {activeDispatchesCount}
+            {todayOrders.length}
           </p>
           <span className="text-[11px] text-amber-600/80 dark:text-amber-400/80 font-medium mt-1 inline-block">
-            Currently on road
+            ₹{todayRevenue.toLocaleString("en-IN", { maximumFractionDigits: 0 })} sales volume
           </span>
         </div>
 
-        <div className="bg-white dark:bg-zinc-900 border border-purple-100 dark:border-purple-900/40 p-4 rounded-xl shadow-xs relative overflow-hidden">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider">
-              Pending COD Cash
-            </span>
-            <div className="w-8 h-8 rounded-lg bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 flex items-center justify-center border border-purple-200 dark:border-purple-800/60">
-              <DollarSign size={18} />
-            </div>
-          </div>
-          <p className="text-2xl sm:text-3xl font-extrabold text-purple-600 dark:text-purple-400 mt-2">
-            ₹{globalPendingCOD.toLocaleString("en-IN")}
-          </p>
-          <span className="text-[11px] text-purple-600/80 dark:text-purple-400/80 font-medium mt-1 inline-block">
-            To collect from customers
-          </span>
-        </div>
-
+        {/* Card 4: Collected COD Total */}
         <div className="bg-white dark:bg-zinc-900 border border-emerald-100 dark:border-emerald-900/40 p-4 rounded-xl shadow-xs relative overflow-hidden">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
