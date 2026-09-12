@@ -19,6 +19,7 @@ import {
   ArrowRight,
   Package,
   Loader2,
+  Trash2,
 } from "lucide-react";
 import { getAccessToken, authFetch } from "@/lib/auth";
 import { useAdmin } from "../layout";
@@ -27,7 +28,7 @@ import toast from "react-hot-toast";
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 export default function AdminOrdersPage() {
-  const { playChime, setPendingCount } = useAdmin();
+  const { playChime, setPendingCount, triggerIncomingOrderAlert } = useAdmin();
   const [orders, setOrders] = useState([]);
   const [users, setUsers] = useState([]);
   const [riders, setRiders] = useState([]);
@@ -38,6 +39,8 @@ export default function AdminOrdersPage() {
   const [expandedOrders, setExpandedOrders] = useState({});
   const [assignModalOrder, setAssignModalOrder] = useState(null);
   const [assigning, setAssigning] = useState(false);
+  const [orderToDelete, setOrderToDelete] = useState(null);
+  const [isDeletingOrder, setIsDeletingOrder] = useState(false);
 
   // Fetch orders and all users
   const fetchOrders = useCallback(async (isSilent = false) => {
@@ -58,8 +61,9 @@ export default function AdminOrdersPage() {
         setPendingCount(pending.length);
 
         if (isSilent && list.length > orders.length) {
-          playChime();
-          toast.success("New Order Received!", { icon: "🔔" });
+          const newOrder = list[0] || { id: "LIVE", order_number: "LIVE ORDER" };
+          triggerIncomingOrderAlert(newOrder);
+          toast.success("🚨 New Live Order Received!", { icon: "🔔" });
         }
       }
 
@@ -203,6 +207,33 @@ export default function AdminOrdersPage() {
       toast.error("Network error while assigning rider");
     } finally {
       setAssigning(false);
+    }
+  };
+
+  const handleDeleteOrder = async () => {
+    if (!orderToDelete) return;
+    setIsDeletingOrder(true);
+    const orderId = orderToDelete.id;
+    const orderNumber = orderToDelete.order_number || orderToDelete.id;
+
+    try {
+      const res = await authFetch(`${API_URL}/api/v1/orders/${orderId}/`, {
+        method: "DELETE",
+      });
+
+      if (res.ok || res.status === 204) {
+        setOrders((prev) => prev.filter((o) => o.id !== orderId));
+        toast.success(`Order #${orderNumber} deleted successfully`);
+        setOrderToDelete(null);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.detail || data.error || "Failed to delete order");
+      }
+    } catch (err) {
+      console.error("Delete order error:", err);
+      toast.error("Network error deleting order");
+    } finally {
+      setIsDeletingOrder(false);
     }
   };
 
@@ -601,9 +632,17 @@ export default function AdminOrdersPage() {
                   <button
                     onClick={() => handlePrintReceipt(order)}
                     title="Print Receipt"
-                    className="w-10 h-10 shrink-0 bg-white dark:bg-[#1a1a26] border border-slate-200 dark:border-[#2a2a35] hover:border-blue-500 hover:text-blue-600 text-slate-600 dark:text-slate-300 rounded-md flex items-center justify-center transition-all active:scale-95 cursor-pointer shadow-xs"
+                    className="w-10 h-10 shrink-0 bg-transparent border border-slate-200 dark:border-[#2a2a35] hover:border-blue-500 hover:text-blue-600 text-slate-600 dark:text-slate-300 rounded-md flex items-center justify-center transition-all active:scale-95 cursor-pointer shadow-xs"
                   >
                     <Printer size={16} />
+                  </button>
+
+                  <button
+                    onClick={() => setOrderToDelete(order)}
+                    title="Delete Order"
+                    className="w-10 h-10 shrink-0 bg-transparent border border-slate-200 dark:border-[#2a2a35] hover:border-rose-400 dark:hover:border-rose-600 text-rose-500 hover:text-rose-600 dark:text-rose-400 rounded-md flex items-center justify-center transition-all active:scale-95 cursor-pointer shadow-xs"
+                  >
+                    <Trash2 size={16} />
                   </button>
 
                   {isPending && (
@@ -726,6 +765,63 @@ export default function AdminOrdersPage() {
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DELETE ORDER CONFIRMATION MODAL */}
+      {orderToDelete && (
+        <div
+          className="fixed inset-0 z-50 bg-slate-900/40 dark:bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 transition-all animate-in fade-in duration-150"
+          onClick={() => setOrderToDelete(null)}
+        >
+          <div
+            className="w-full max-w-md bg-white dark:bg-[#111118] border border-slate-200 dark:border-[#252530] rounded-2xl p-6 sm:p-7 shadow-2xl space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-12 h-12 rounded-full bg-transparent text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800/80 flex items-center justify-center mx-auto">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <div className="text-center space-y-1">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                Delete Order #{orderToDelete.order_number || orderToDelete.id}?
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed">
+                Are you sure you want to permanently delete this order for{" "}
+                <span className="font-bold text-slate-700 dark:text-zinc-200">
+                  {getCustomerDetails(orderToDelete).name}
+                </span>{" "}
+                (₹{parseFloat(orderToDelete.total_amount || 0).toFixed(0)})? This action cannot be undone.
+              </p>
+            </div>
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                disabled={isDeletingOrder}
+                onClick={() => setOrderToDelete(null)}
+                className="flex-1 py-2.5 px-4 bg-transparent border border-slate-200 dark:border-[#252530] hover:border-slate-300 text-slate-700 dark:text-zinc-200 text-xs font-bold rounded-xl transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingOrder}
+                onClick={handleDeleteOrder}
+                className="flex-1 py-2.5 px-4 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition-all active:scale-95 cursor-pointer shadow-xs flex items-center justify-center gap-1.5"
+              >
+                {isDeletingOrder ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={14} />
+                    <span>Delete Order</span>
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>

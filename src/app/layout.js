@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, createContext, useContext } from "react";
+import { useState, useEffect, useRef, useCallback, createContext, useContext } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { Toaster, toast } from "react-hot-toast";
@@ -25,17 +25,21 @@ import {
   MapPin,
   ClipboardList,
   Loader2,
+  CheckCircle2,
 } from "lucide-react";
 import { getAccessToken, getUser, clearAuth } from "@/lib/auth";
 import "./globals.css";
 
-// Context for global admin state (sound, active counts, theme)
+// Context for global admin state (sound, active counts, theme, incoming order alarms)
 export const AdminContext = createContext({
   soundEnabled: true,
   setSoundEnabled: () => { },
   pendingCount: 0,
   setPendingCount: () => { },
   playChime: () => { },
+  triggerIncomingOrderAlert: () => { },
+  dismissIncomingOrderAlert: () => { },
+  activeIncomingOrder: null,
   theme: "light",
   toggleTheme: () => { },
 });
@@ -121,6 +125,51 @@ export default function RootLayout({ children }) {
   const [pendingCount, setPendingCount] = useState(0);
   const [theme, setTheme] = useState("light");
 
+  // Continuous incoming order alert state
+  const [activeIncomingOrder, setActiveIncomingOrder] = useState(null);
+  const alarmIntervalRef = useRef(null);
+  const knownOrderIdsRef = useRef(new Set());
+  const initialFetchDoneRef = useRef(false);
+
+  // Stop the looping chime sound
+  const stopAlarmLoop = useCallback(() => {
+    if (alarmIntervalRef.current) {
+      clearInterval(alarmIntervalRef.current);
+      alarmIntervalRef.current = null;
+    }
+  }, []);
+
+  // Trigger continuous looping chime & incoming order modal
+  const triggerIncomingOrderAlert = useCallback((orderData) => {
+    setActiveIncomingOrder(orderData || { id: "LIVE", order_number: "LIVE ORDER" });
+    
+    // Play first ring immediately
+    playNotificationChime();
+
+    // Clear previous timer
+    if (alarmIntervalRef.current) {
+      clearInterval(alarmIntervalRef.current);
+    }
+
+    // Loop chime every 1800ms continuously until confirmed by admin
+    alarmIntervalRef.current = setInterval(() => {
+      playNotificationChime();
+    }, 1800);
+  }, []);
+
+  // Dismiss popup and stop alarm
+  const dismissIncomingOrderAlert = useCallback(() => {
+    stopAlarmLoop();
+    setActiveIncomingOrder(null);
+  }, [stopAlarmLoop]);
+
+  // Clean up timer on unmount
+  useEffect(() => {
+    return () => {
+      stopAlarmLoop();
+    };
+  }, [stopAlarmLoop]);
+
   // Register PWA Service Worker
   useEffect(() => {
     if (typeof window !== "undefined" && "serviceWorker" in navigator) {
@@ -136,10 +185,8 @@ export default function RootLayout({ children }) {
   // Check Sound Permission on site open
   useEffect(() => {
     if (typeof window !== "undefined") {
-      // Check if user has already granted audio permission
       const hasPermission = localStorage.getItem("fib_audio_permission_granted");
       if (hasPermission !== "true" && pathname !== "/login") {
-        // Pop up audio permission prompt immediately upon site visit
         const timer = setTimeout(() => {
           setShowSoundPrompt(true);
         }, 500);
@@ -159,6 +206,47 @@ export default function RootLayout({ children }) {
       duration: 4000,
     });
   };
+
+  // Background Live Order Poll across all admin pages
+  useEffect(() => {
+    if (!authorized || pathname === "/login") return;
+
+    const checkLiveOrders = async () => {
+      const token = getAccessToken();
+      if (!token) return;
+
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/v1/orders/`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          const list = Array.isArray(data) ? data : (data?.results || []);
+          const pending = list.filter((o) => o.status === "PENDING" || o.status === "CONFIRMED");
+          setPendingCount(pending.length);
+
+          if (!initialFetchDoneRef.current) {
+            list.forEach((o) => knownOrderIdsRef.current.add(o.id));
+            initialFetchDoneRef.current = true;
+          } else {
+            const newOrders = list.filter((o) => !knownOrderIdsRef.current.has(o.id));
+            if (newOrders.length > 0) {
+              const latest = newOrders[0];
+              newOrders.forEach((o) => knownOrderIdsRef.current.add(o.id));
+              triggerIncomingOrderAlert(latest);
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Live order polling error:", e);
+      }
+    };
+
+    checkLiveOrders();
+    const interval = setInterval(checkLiveOrders, 10000);
+    return () => clearInterval(interval);
+  }, [authorized, pathname, triggerIncomingOrderAlert]);
 
   // Load and apply theme preference
   useEffect(() => {
@@ -274,6 +362,9 @@ export default function RootLayout({ children }) {
             playChime: () => {
               if (soundEnabled) playNotificationChime();
             },
+            triggerIncomingOrderAlert,
+            dismissIncomingOrderAlert,
+            activeIncomingOrder,
             theme,
             toggleTheme,
           }}
@@ -813,6 +904,77 @@ export default function RootLayout({ children }) {
                     className="w-full py-2 text-xs font-semibold text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-white transition-colors cursor-pointer"
                   >
                     Mute for Now
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          {/* CONTINUOUS RINGING INCOMING ORDER POPUP MODAL (Rings until confirmed by admin) */}
+          {activeIncomingOrder && (
+            <div className="fixed inset-0 z-50 bg-slate-900/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+              <div className="bg-white dark:bg-[#111118] border border-slate-200 dark:border-[#252530] rounded-2xl p-6 sm:p-7 max-w-sm w-full shadow-2xl space-y-4 text-center relative overflow-hidden">
+                {/* Ringing Sound Wave Animation */}
+                <div className="w-16 h-16 rounded-full bg-transparent text-blue-600 dark:text-blue-400 border border-slate-200 dark:border-[#252530] flex items-center justify-center mx-auto relative animate-bounce">
+                  <Bell className="w-8 h-8 animate-pulse" />
+                  <span className="absolute -top-1 -right-1 flex h-4 w-4">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-4 w-4 bg-blue-500"></span>
+                  </span>
+                </div>
+
+                <div>
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400 text-[11px] font-black tracking-wider uppercase mb-2">
+                    <Volume2 size={13} className="animate-spin" />
+                    <span>Live Order Alarm Ringing</span>
+                  </div>
+                  <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
+                    New Order Received!
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-zinc-400 mt-1">
+                    Ringing continuously until you confirm & acknowledge.
+                  </p>
+                </div>
+
+                {/* Order Summary Box (Clean, no colored background) */}
+                <div className="bg-transparent border border-slate-200 dark:border-[#252530] rounded-xl p-4 text-left space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-500 dark:text-zinc-400">Order ID</span>
+                    <span className="text-sm font-extrabold text-blue-600 dark:text-blue-400 font-mono">
+                      {activeIncomingOrder.order_number || `#${activeIncomingOrder.id}`}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-500 dark:text-zinc-400">Total Amount</span>
+                    <span className="text-base font-black text-emerald-600 dark:text-emerald-400">
+                      ₹{parseFloat(activeIncomingOrder.total_amount || 0).toFixed(0)}
+                    </span>
+                  </div>
+                  {activeIncomingOrder.delivery_slot && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-500 dark:text-zinc-400">Delivery Slot</span>
+                      <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                        {activeIncomingOrder.delivery_slot}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex flex-col gap-2 pt-1">
+                  <button
+                    onClick={() => {
+                      dismissIncomingOrderAlert();
+                      router.push("/orders");
+                    }}
+                    className="w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-extrabold text-xs rounded-xl shadow-md transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <CheckCircle2 size={16} />
+                    <span>Confirm & View Order</span>
+                  </button>
+                  <button
+                    onClick={stopAlarmLoop}
+                    className="w-full py-2 text-xs font-bold text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-white transition-colors cursor-pointer"
+                  >
+                    Silence Alarm Ringing
                   </button>
                 </div>
               </div>
