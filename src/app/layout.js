@@ -238,10 +238,8 @@ export default function RootLayout({ children }) {
     }
   }, []);
 
-  // Trigger continuous looping chime & incoming order modal
+  // Trigger chime that plays for 5 seconds then auto-stops
   const triggerIncomingOrderAlert = useCallback((orderData) => {
-    setActiveIncomingOrder(orderData || { id: "LIVE", order_number: "LIVE ORDER" });
-
     // Play first ring immediately
     playNotificationChime();
 
@@ -263,11 +261,23 @@ export default function RootLayout({ children }) {
       clearInterval(alarmIntervalRef.current);
     }
 
-    // Loop chime every 1800ms continuously until confirmed by admin
+    // Loop chime every 1800ms
     alarmIntervalRef.current = setInterval(() => {
       playNotificationChime();
     }, 1800);
-  }, []);
+
+    // Auto-stop after 5 seconds
+    setTimeout(() => {
+      stopAlarmLoop();
+    }, 5000);
+
+    // Show toast notification instead of popup
+    toast(`🔔 New Order #${orderData?.order_number || orderData?.id || ""}  •  ₹${parseFloat(orderData?.total_amount || 0).toFixed(0)}`, {
+      duration: 5000,
+      icon: "🛒",
+      style: { fontWeight: "bold", fontSize: "13px" },
+    });
+  }, [stopAlarmLoop]);
 
   // Dismiss popup and stop alarm
   const dismissIncomingOrderAlert = useCallback(() => {
@@ -1040,77 +1050,6 @@ export default function RootLayout({ children }) {
                     className="w-full py-2 text-xs font-semibold text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-white transition-colors cursor-pointer"
                   >
                     Mute for Now
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-          {/* CONTINUOUS RINGING INCOMING ORDER POPUP MODAL (Rings until confirmed by admin) */}
-          {activeIncomingOrder && (
-            <div className="fixed inset-0 z-50 bg-slate-900/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-              <div className="bg-white dark:bg-[#111118] border border-slate-200 dark:border-[#252530] rounded-2xl p-6 sm:p-7 max-w-sm w-full shadow-2xl space-y-4 text-center relative overflow-hidden">
-                {/* Ringing Sound Wave Animation */}
-                <div className="w-16 h-16 rounded-full bg-transparent text-blue-600 dark:text-blue-400 border border-slate-200 dark:border-[#252530] flex items-center justify-center mx-auto relative animate-bounce">
-                  <Bell className="w-8 h-8 animate-pulse" />
-                  <span className="absolute -top-1 -right-1 flex h-4 w-4">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-4 w-4 bg-blue-500"></span>
-                  </span>
-                </div>
-
-                <div>
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400 text-[11px] font-black tracking-wider uppercase mb-2">
-                    <Volume2 size={13} className="animate-spin" />
-                    <span>Live Order Alarm Ringing</span>
-                  </div>
-                  <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
-                    New Order Received!
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-zinc-400 mt-1">
-                    Ringing continuously until you confirm & acknowledge.
-                  </p>
-                </div>
-
-                {/* Order Summary Box (Clean, no colored background) */}
-                <div className="bg-transparent border border-slate-200 dark:border-[#252530] rounded-xl p-4 text-left space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-500 dark:text-zinc-400">Order ID</span>
-                    <span className="text-sm font-extrabold text-blue-600 dark:text-blue-400 font-mono">
-                      {activeIncomingOrder.order_number || `#${activeIncomingOrder.id}`}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-500 dark:text-zinc-400">Total Amount</span>
-                    <span className="text-base font-black text-emerald-600 dark:text-emerald-400">
-                      ₹{parseFloat(activeIncomingOrder.total_amount || 0).toFixed(0)}
-                    </span>
-                  </div>
-                  {activeIncomingOrder.delivery_slot && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-500 dark:text-zinc-400">Delivery Slot</span>
-                      <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">
-                        {activeIncomingOrder.delivery_slot}
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex flex-col gap-2 pt-1">
-                  <button
-                    onClick={() => {
-                      dismissIncomingOrderAlert();
-                      router.push("/orders");
-                    }}
-                    className="w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-extrabold text-xs rounded-xl shadow-md transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-2"
-                  >
-                    <CheckCircle2 size={16} />
-                    <span>Confirm & View Order</span>
-                  </button>
-                  <button
-                    onClick={stopAlarmLoop}
-                    className="w-full py-2 text-xs font-bold text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-white transition-colors cursor-pointer"
-                  >
-                    Silence Alarm Ringing
                   </button>
                 </div>
               </div>

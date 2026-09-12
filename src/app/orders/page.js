@@ -32,6 +32,7 @@ export default function AdminOrdersPage() {
   const [orders, setOrders] = useState([]);
   const [users, setUsers] = useState([]);
   const [riders, setRiders] = useState([]);
+  const [deliveries, setDeliveries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -42,14 +43,15 @@ export default function AdminOrdersPage() {
   const [orderToDelete, setOrderToDelete] = useState(null);
   const [isDeletingOrder, setIsDeletingOrder] = useState(false);
 
-  // Fetch orders and all users
+  // Fetch orders, users, and deliveries
   const fetchOrders = useCallback(async (isSilent = false) => {
     if (!isSilent) setRefreshing(true);
 
     try {
-      const [ordersRes, usersRes] = await Promise.all([
+      const [ordersRes, usersRes, deliveriesRes] = await Promise.all([
         authFetch(`${API_URL}/api/v1/orders/`),
         authFetch(`${API_URL}/api/v1/users/`),
+        authFetch(`${API_URL}/api/v1/deliveries/`),
       ]);
 
       if (ordersRes.ok) {
@@ -67,6 +69,12 @@ export default function AdminOrdersPage() {
         setUsers(list);
         setRiders(list.filter((u) => u.role === "DELIVERY"));
       }
+
+      if (deliveriesRes.ok) {
+        const deliveriesData = await deliveriesRes.json();
+        const list = Array.isArray(deliveriesData) ? deliveriesData : (deliveriesData?.results || []);
+        setDeliveries(list);
+      }
     } catch (err) {
       console.error("Orders fetch error:", err);
     } finally {
@@ -82,7 +90,7 @@ export default function AdminOrdersPage() {
   useEffect(() => {
     const timer = setInterval(() => {
       fetchOrders(true);
-    }, 12000);
+    }, 10000);
     return () => clearInterval(timer);
   }, [fetchOrders]);
 
@@ -96,6 +104,60 @@ export default function AdminOrdersPage() {
     });
     return map;
   }, [users]);
+
+  // Fast delivery assignments lookup dictionary by order ID
+  const assignmentsMap = useMemo(() => {
+    const map = {};
+    deliveries.forEach((d) => {
+      const orderId = d.order || d.order_id;
+      if (orderId) {
+        map[orderId] = d;
+      }
+    });
+    return map;
+  }, [deliveries]);
+
+  // Dynamic assigned rider extractor for an order
+  const getRiderDetails = useCallback(
+    (order) => {
+      if (!order) return null;
+      const assignment = assignmentsMap[order.id];
+      if (!assignment) return null;
+
+      const riderId = assignment.delivery_boy;
+      const matchedRider = riders.find((r) => r.id === riderId) || usersMap[riderId];
+
+      if (matchedRider) {
+        const name = matchedRider.first_name
+          ? `${matchedRider.first_name} ${matchedRider.last_name || ""}`.trim()
+          : (matchedRider.username || `Rider #${matchedRider.id}`);
+        return {
+          id: matchedRider.id,
+          assignmentId: assignment.id,
+          name,
+          phone: matchedRider.phone_number || "",
+          avatar: matchedRider.avatar || null,
+          assigned_at: assignment.assigned_at,
+          delivered_at: assignment.delivered_at,
+        };
+      }
+
+      if (assignment.delivery_boy_name) {
+        return {
+          id: riderId,
+          assignmentId: assignment.id,
+          name: assignment.delivery_boy_name,
+          phone: "",
+          avatar: null,
+          assigned_at: assignment.assigned_at,
+          delivered_at: assignment.delivered_at,
+        };
+      }
+
+      return null;
+    },
+    [assignmentsMap, riders, usersMap]
+  );
 
   // Dynamic customer extractor for orders
   const getCustomerDetails = useCallback((order) => {
@@ -345,6 +407,9 @@ export default function AdminOrdersPage() {
 
       const q = searchQuery.toLowerCase();
       const { name: custName, phone: custPhone } = getCustomerDetails(order);
+      const rider = getRiderDetails(order);
+      const riderName = rider?.name?.toLowerCase() || "";
+      const riderPhone = rider?.phone || "";
 
       const matchesSearch =
         !q ||
@@ -352,11 +417,13 @@ export default function AdminOrdersPage() {
         (order.order_number && order.order_number.toLowerCase().includes(q)) ||
         (custName && custName.toLowerCase().includes(q)) ||
         (custPhone && custPhone.includes(q)) ||
+        (riderName && riderName.includes(q)) ||
+        (riderPhone && riderPhone.includes(q)) ||
         (order.delivery_address && order.delivery_address.toLowerCase().includes(q));
 
       return matchesStatus && matchesSearch;
     });
-  }, [orders, statusFilter, searchQuery, getCustomerDetails]);
+  }, [orders, statusFilter, searchQuery, getCustomerDetails, getRiderDetails]);
 
   const pendingCountTotal = orders.filter((o) => o.status === "PENDING" || o.status === "CONFIRMED").length;
   const outForDeliveryCount = orders.filter((o) => o.status === "OUT_FOR_DELIVERY").length;
@@ -467,7 +534,7 @@ export default function AdminOrdersPage() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by ID, Name, Phone..."
+            placeholder="Search by ID, Customer, Rider, Phone..."
             className="w-full pl-11 pr-4 py-2.5 bg-white dark:bg-[#111118] border border-slate-200 dark:border-[#1e1e2a] rounded-lg text-xs text-slate-800 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition-all font-medium"
           />
         </div>
@@ -500,9 +567,9 @@ export default function AdminOrdersPage() {
               badge: "bg-transparent text-slate-700 dark:text-zinc-300 border-slate-200 dark:border-[#252530]",
               dot: "bg-slate-400",
             };
-            const isPending = order.status === "PENDING" || order.status === "CONFIRMED";
             const isOut = order.status === "OUT_FOR_DELIVERY";
             const { name: customerName, phone: customerPhone } = getCustomerDetails(order);
+            const assignedRider = getRiderDetails(order);
             const cleanPhone = customerPhone ? customerPhone.replace(/\D/g, "") : "";
             const displayPhone = cleanPhone
               ? (cleanPhone.length >= 10 ? `+91 ${cleanPhone.slice(-10)}` : cleanPhone)
@@ -605,6 +672,77 @@ export default function AdminOrdersPage() {
                     </div>
                   </div>
 
+                  {/* ASSIGNED DELIVERY BOY BLOCK */}
+                  {assignedRider ? (
+                    <div className="bg-purple-50/70 dark:bg-purple-950/20 rounded-xl p-3 mb-3 border border-purple-200 dark:border-purple-900/50 flex items-center justify-between gap-3 transition-all">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-9 h-9 rounded-lg bg-white dark:bg-[#1a1a26] text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800/80 flex items-center justify-center shrink-0 shadow-xs">
+                          <Bike size={18} />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] font-extrabold uppercase tracking-wider text-purple-600 dark:text-purple-400">
+                              Assigned Delivery Boy
+                            </span>
+                          </div>
+                          <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate">
+                            {assignedRider.name}
+                          </p>
+                          {assignedRider.phone && (
+                            <p className="text-[11px] text-purple-600 dark:text-purple-400 font-mono font-bold mt-0.5">
+                              {assignedRider.phone.length >= 10 ? `+91 ${assignedRider.phone.slice(-10)}` : assignedRider.phone}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {assignedRider.phone && (
+                          <>
+                            <a
+                              href={`tel:${assignedRider.phone.replace(/\D/g, "")}`}
+                              className="w-8 h-8 rounded-md bg-white dark:bg-[#1a1a26] border border-slate-200 dark:border-[#2a2a35] flex items-center justify-center text-purple-600 dark:text-purple-400 hover:border-purple-400 transition-colors shadow-xs"
+                              title={`Call ${assignedRider.name}`}
+                            >
+                              <Phone size={13} />
+                            </a>
+                            <a
+                              href={`https://wa.me/91${assignedRider.phone.replace(/\D/g, "").slice(-10)}?text=${encodeURIComponent(
+                                `Hello ${assignedRider.name}! Regarding order #${order.order_number || order.id}:`
+                              )}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="w-8 h-8 rounded-md bg-white dark:bg-[#1a1a26] border border-slate-200 dark:border-[#2a2a35] flex items-center justify-center text-emerald-600 dark:text-emerald-400 hover:border-emerald-400 transition-colors shadow-xs"
+                              title={`WhatsApp ${assignedRider.name}`}
+                            >
+                              <MessageSquare size={13} />
+                            </a>
+                          </>
+                        )}
+                        <button
+                          onClick={() => setAssignModalOrder(order)}
+                          title="Change / Reassign Delivery Boy"
+                          className="px-2.5 py-1.5 bg-white dark:bg-[#1a1a26] border border-purple-300 dark:border-purple-800 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/40 rounded-md text-[11px] font-bold transition-all active:scale-95 cursor-pointer shadow-xs"
+                        >
+                          Change
+                        </button>
+                      </div>
+                    </div>
+                  ) : isOut ? (
+                    <div className="bg-amber-50/50 dark:bg-amber-950/20 rounded-xl p-2.5 mb-3 border border-amber-200 dark:border-amber-900/40 flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 text-xs font-semibold">
+                        <Bike size={14} className="shrink-0" />
+                        <span>Out for delivery (No rider assigned)</span>
+                      </div>
+                      <button
+                        onClick={() => setAssignModalOrder(order)}
+                        className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-md text-[10px] font-bold transition-all active:scale-95 cursor-pointer"
+                      >
+                        Assign Rider
+                      </button>
+                    </div>
+                  ) : null}
+
                   {/* PRODUCT ITEMS */}
                   <div className="mb-4">
                     <button
@@ -678,34 +816,37 @@ export default function AdminOrdersPage() {
                     <Trash2 size={16} />
                   </button>
 
-                  {isPending && (
+                  {/* ACTION BUTTONS FOR NEW ORDERS (PENDING / CONFIRMED) */}
+                  {(order.status === "PENDING" || order.status === "CONFIRMED") && (
                     <div className="flex items-center gap-2 w-full">
-                      <button
-                        onClick={() => updateOrderStatus(order.id, "CONFIRMED")}
-                        className="flex-1 px-3 py-2.5 bg-white dark:bg-[#1a1a26] border border-blue-300 dark:border-blue-700/80 text-blue-600 dark:text-blue-400 hover:bg-slate-50 dark:hover:bg-[#252530] rounded-md text-xs font-bold transition-all active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
-                      >
-                        <CheckCircle2 size={14} className="text-blue-600 dark:text-blue-400" />
-                        <span>Confirm</span>
-                      </button>
-
                       <button
                         onClick={() => setAssignModalOrder(order)}
                         className="flex-1 px-3 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-md text-xs font-bold shadow-xs transition-all active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
                       >
                         <Bike size={14} />
-                        <span>Assign Rider</span>
+                        <span>{assignedRider ? "Reassign Rider" : "Assign Rider"}</span>
                       </button>
                     </div>
                   )}
 
                   {isOut && (
-                    <button
-                      onClick={() => updateOrderStatus(order.id, "DELIVERED")}
-                      className="flex-1 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-xs font-bold shadow-xs transition-all active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
-                    >
-                       <CheckCircle2 size={14} />
-                       <span>Mark Delivered</span>
-                    </button>
+                    <div className="flex items-center gap-2 w-full">
+                      <button
+                        onClick={() => updateOrderStatus(order.id, "DELIVERED")}
+                        className="flex-1 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-xs font-bold shadow-xs transition-all active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <CheckCircle2 size={14} />
+                        <span>Mark Delivered</span>
+                      </button>
+                      <button
+                        onClick={() => setAssignModalOrder(order)}
+                        title="Reassign Rider"
+                        className="px-3 py-2.5 bg-white dark:bg-[#1a1a26] border border-purple-200 dark:border-purple-900/60 text-purple-600 dark:text-purple-400 hover:border-purple-400 rounded-md text-xs font-bold transition-all active:scale-95 flex items-center justify-center gap-1 cursor-pointer shadow-xs shrink-0"
+                      >
+                        <Bike size={14} />
+                        <span>Reassign</span>
+                      </button>
+                    </div>
                   )}
 
                   {order.status !== "CANCELLED" && order.status !== "DELIVERED" && (
