@@ -29,7 +29,7 @@ import {
   Loader2,
   Trash2,
 } from "lucide-react";
-import { getAccessToken } from "@/lib/auth";
+import { getAccessToken, authFetch } from "@/lib/auth";
 import toast from "react-hot-toast";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
@@ -326,13 +326,14 @@ export default function AdminRidersPage({ defaultTab }) {
   const handleAssignRider = async (deliveryBoyId) => {
     if (!assignModalOrder) return;
     setAssigning(true);
-    const token = getAccessToken();
 
     try {
-      const res = await fetch(`${API_URL}/api/v1/deliveries/`, {
+      let isSuccess = false;
+
+      // 1. Try to create delivery assignment
+      let res = await authFetch(`${API_URL}/api/v1/deliveries/`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -342,10 +343,37 @@ export default function AdminRidersPage({ defaultTab }) {
       });
 
       if (res.ok) {
-        await fetch(`${API_URL}/api/v1/orders/${assignModalOrder.id}/update_status/`, {
-          method: "POST",
+        isSuccess = true;
+      } else {
+        // 2. If it already exists (OneToOneField constraint), look up existing assignment and PATCH it
+        const getDeliveriesRes = await authFetch(`${API_URL}/api/v1/deliveries/`);
+        if (getDeliveriesRes.ok) {
+          const data = await getDeliveriesRes.json();
+          const list = Array.isArray(data) ? data : (data?.results || []);
+          const existing = list.find((a) => a.order === assignModalOrder.id || a.order_id === assignModalOrder.id);
+          if (existing?.id) {
+            const patchRes = await authFetch(`${API_URL}/api/v1/deliveries/${existing.id}/`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                delivery_boy: deliveryBoyId,
+              }),
+            });
+            if (patchRes.ok) {
+              isSuccess = true;
+            } else {
+              res = patchRes;
+            }
+          }
+        }
+      }
+
+      if (isSuccess) {
+        await authFetch(`${API_URL}/api/v1/orders/${assignModalOrder.id}/`, {
+          method: "PATCH",
           headers: {
-            Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ status: "OUT_FOR_DELIVERY" }),
@@ -355,7 +383,14 @@ export default function AdminRidersPage({ defaultTab }) {
         setAssignModalOrder(null);
         fetchData();
       } else {
-        toast.error("Failed to assign rider");
+        const errData = await res.json().catch(() => ({}));
+        const msg =
+          errData.detail ||
+          errData.error ||
+          (Array.isArray(errData.order) ? errData.order[0] : null) ||
+          (Array.isArray(errData.delivery_boy) ? errData.delivery_boy[0] : null) ||
+          "Failed to assign rider";
+        toast.error(msg);
       }
     } catch {
       toast.error("Network error assigning rider");
@@ -366,43 +401,54 @@ export default function AdminRidersPage({ defaultTab }) {
 
   // Save both status and delivery boy for an order
   const handleSaveOrderChanges = async (orderId, assignmentId, newStatus, newRiderId, hasStatusChanged, hasRiderChanged) => {
-    const token = getAccessToken();
     setSavingOrders((prev) => ({ ...prev, [orderId]: true }));
 
     try {
       const headers = {
-        Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       };
 
       if (hasRiderChanged && newRiderId) {
-        const assignRes = await fetch(`${API_URL}/api/v1/deliveries/`, {
-          method: "POST",
-          headers,
-          body: JSON.stringify({
-            order: orderId,
-            delivery_boy: newRiderId,
-          }),
-        });
+        let assignRes;
+        if (assignmentId) {
+          assignRes = await authFetch(`${API_URL}/api/v1/deliveries/${assignmentId}/`, {
+            method: "PATCH",
+            headers,
+            body: JSON.stringify({
+              delivery_boy: newRiderId,
+            }),
+          });
+        } else {
+          assignRes = await authFetch(`${API_URL}/api/v1/deliveries/`, {
+            method: "POST",
+            headers,
+            body: JSON.stringify({
+              order: orderId,
+              delivery_boy: newRiderId,
+            }),
+          });
+        }
         if (!assignRes.ok) {
-          throw new Error("Failed to assign delivery boy");
+          const errData = await assignRes.json().catch(() => ({}));
+          throw new Error(errData.detail || errData.error || "Failed to assign delivery boy");
         }
       }
 
       if (hasStatusChanged) {
-        const statusRes = await fetch(
-          `${API_URL}/api/v1/orders/${orderId}/update_status/`,
+        const statusRes = await authFetch(
+          `${API_URL}/api/v1/orders/${orderId}/`,
           {
-            method: "POST",
+            method: "PATCH",
             headers,
             body: JSON.stringify({ status: newStatus }),
           }
         );
         if (!statusRes.ok) {
-          throw new Error("Failed to update status");
+          const errData = await statusRes.json().catch(() => ({}));
+          throw new Error(errData.detail || errData.error || "Failed to update status");
         }
         if (newStatus === "DELIVERED" && assignmentId) {
-          await fetch(`${API_URL}/api/v1/deliveries/${assignmentId}/`, {
+          await authFetch(`${API_URL}/api/v1/deliveries/${assignmentId}/`, {
             method: "PATCH",
             headers,
             body: JSON.stringify({ delivered_at: new Date().toISOString() }),
