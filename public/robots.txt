@@ -1,0 +1,18 @@
+User-agent: *
+Allow: /
+
+# Block private / utility routes
+Disallow: /admin/
+Disallow: /search
+Disallow: /login
+Disallow: /cart
+Disallow: /profile
+Disallow: /order
+Disallow: /order-success
+Disallow: /order-fail
+Disallow: /delivery
+Disallow: /my-queries
+Disallow: /wishlist
+Disallow: /delete-account
+
+Sitemap: https://www.freshinbasket.com/sitemap.xml

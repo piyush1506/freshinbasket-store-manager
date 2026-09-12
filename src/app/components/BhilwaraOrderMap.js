@@ -336,7 +336,7 @@ export default function BhilwaraOrderMap({
 
   return (
     <div
-      className={`rounded-2xl overflow-hidden transition-all duration-300 ${
+      className={`rounded-xl overflow-hidden transition-all duration-300 ${
         isFullscreen ? "fixed inset-4 z-50 shadow-2xl flex flex-col" : "relative"
       }`}
       style={{
@@ -362,18 +362,17 @@ export default function BhilwaraOrderMap({
             </div>
             <div>
               <h2
-                className="bg-gradient-to-r from-emerald-600 to-green-500 bg-clip-text text-transparent drop-shadow-sm text-base font-medium flex items-center gap-2"
-                style={{ color: isDark ? "#fff" : "#1a1a2e" }}
+                className="bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-500 bg-clip-text text-transparent drop-shadow-sm text-base font-semibold flex items-center gap-2"
               >
                 Bhilwara Order Locations
                 <span
                   className="text-[10px] font-semibold px-2.5 py-0.5 rounded-full flex items-center gap-1.5"
                   style={{
-                    background: isDark ? "rgba(16,185,129,0.12)" : "#ECFDF5",
-                    color: "#10B981",
+                    background: isDark ? "rgba(74,125,255,0.12)" : "#EEF2FF",
+                    color: "#4A7DFF",
                   }}
                 >
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
                   {processedOrders.length} Live Order Pins
                 </span>
               </h2>

@@ -103,14 +103,14 @@ export default function ImportPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <Link
-            href="/inventory"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-emerald-600 dark:text-zinc-400 dark:hover:text-emerald-400 mb-2 transition-colors"
+            href="/products"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-blue-600 dark:text-zinc-400 dark:hover:text-blue-400 mb-2 transition-colors"
           >
             <ArrowLeft size={14} />
-            Back to Quick Stock
+            Back to Products Catalog
           </Link>
-          <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-emerald-600 to-teal-500 bg-clip-text text-transparent flex items-center gap-2">
-            <FileSpreadsheet className="text-emerald-600 dark:text-emerald-400" size={24} />
+          <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent flex items-center gap-2">
+            <FileSpreadsheet className="text-blue-600 dark:text-blue-400" size={24} />
             Bulk Excel Product Import
           </h1>
           <p className="text-xs text-slate-500 dark:text-zinc-400 mt-1">
@@ -121,10 +121,10 @@ export default function ImportPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Step 1: Download Template */}
-        <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl p-5 sm:p-6 flex flex-col justify-between shadow-sm">
+        <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl p-5 sm:p-6 flex flex-col justify-between shadow-sm">
           <div>
             <div className="flex items-center gap-3 mb-4">
-              <span className="w-7 h-7 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 font-bold text-xs flex items-center justify-center">
+              <span className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 font-bold text-xs flex items-center justify-center">
                 1
               </span>
               <div>
@@ -192,10 +192,10 @@ export default function ImportPage() {
         </div>
 
         {/* Step 2: Upload File */}
-        <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl p-5 sm:p-6 flex flex-col justify-between shadow-sm">
+        <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl p-5 sm:p-6 flex flex-col justify-between shadow-sm">
           <div>
             <div className="flex items-center gap-3 mb-4">
-              <span className="w-7 h-7 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 font-bold text-xs flex items-center justify-center">
+              <span className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 font-bold text-xs flex items-center justify-center">
                 2
               </span>
               <div>
@@ -219,9 +219,9 @@ export default function ImportPage() {
               onClick={() => fileInputRef.current?.click()}
               className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${
                 dragging
-                  ? "border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20"
+                  ? "border-blue-500 bg-blue-50/50 dark:bg-blue-950/20"
                   : file
-                  ? "border-emerald-400 bg-emerald-50/30 dark:border-emerald-800 dark:bg-emerald-950/10"
+                  ? "border-blue-400 bg-blue-50/30 dark:border-blue-800 dark:bg-blue-950/10"
                   : "border-slate-200 dark:border-zinc-800 hover:border-slate-400 dark:hover:border-zinc-700 bg-slate-50/50 dark:bg-zinc-800/30"
               }`}
             >
@@ -234,7 +234,7 @@ export default function ImportPage() {
               />
               {file ? (
                 <div className="space-y-1.5">
-                  <div className="w-10 h-10 mx-auto rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                  <div className="w-10 h-10 mx-auto rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400">
                     <FileCheck size={20} />
                   </div>
                   <p className="text-xs font-semibold text-slate-800 dark:text-zinc-100 truncate max-w-xs mx-auto">
@@ -263,7 +263,7 @@ export default function ImportPage() {
           <button
             onClick={handleImport}
             disabled={!file || loading}
-            className="w-full mt-4 flex items-center justify-center gap-2 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-xl shadow-sm disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-[0.99] cursor-pointer"
+            className="w-full mt-4 flex items-center justify-center gap-2 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-sm disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-[0.99] cursor-pointer"
           >
             {loading ? (
               <>
@@ -282,7 +282,7 @@ export default function ImportPage() {
 
       {/* Error message */}
       {error && (
-        <div className="p-4 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 rounded-2xl flex items-start gap-3 text-xs text-rose-700 dark:text-rose-300">
+        <div className="p-4 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 rounded-xl flex items-start gap-3 text-xs text-rose-700 dark:text-rose-300">
           <AlertCircle size={16} className="shrink-0 mt-0.5" />
           <div className="font-medium">{error}</div>
         </div>
@@ -290,7 +290,7 @@ export default function ImportPage() {
 
       {/* Results Summary */}
       {result && (
-        <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl p-5 sm:p-6 space-y-4 shadow-sm">
+        <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl p-5 sm:p-6 space-y-4 shadow-sm">
           <div className="flex items-center gap-2">
             <CheckCircle2 size={18} className="text-emerald-600 dark:text-emerald-400" />
             <h3 className="text-sm font-bold text-slate-800 dark:text-zinc-100">
@@ -342,10 +342,10 @@ export default function ImportPage() {
 
           <div className="flex gap-3 pt-2">
             <Link
-              href="/inventory"
-              className="flex-1 py-2 px-4 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-xl text-center transition-colors shadow-sm"
+              href="/products"
+              className="flex-1 py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl text-center transition-colors shadow-sm"
             >
-              Verify in Quick Stock →
+              Verify in Products Catalog →
             </Link>
             <button
               onClick={() => {

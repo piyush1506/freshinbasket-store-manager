@@ -133,7 +133,7 @@ function AdminLoginForm() {
       {/* Top Header */}
       <header className="w-full max-w-5xl mx-auto px-6 py-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center font-black text-sm text-white shadow-md shadow-blue-500/20">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center font-bold text-sm text-white shadow-md shadow-blue-500/20">
             F
           </div>
           <div>
@@ -170,7 +170,7 @@ function AdminLoginForm() {
       {/* Main Form */}
       <main className="flex-1 flex items-center justify-center px-4 py-8">
         <div
-          className={`w-full max-w-[420px] rounded-2xl border p-7 sm:p-9 transition-all duration-300 ${
+          className={`w-full max-w-[420px] rounded-xl border p-7 sm:p-9 transition-all duration-300 ${
             isDark
               ? "bg-[#121824] border-zinc-800 shadow-[0_12px_40px_rgba(0,0,0,0.5)]"
               : "bg-white border-slate-200 shadow-[0_8px_30px_rgba(0,0,0,0.06)]"

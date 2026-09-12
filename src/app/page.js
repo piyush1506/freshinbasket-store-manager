@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import {
@@ -21,8 +21,9 @@ import {
   ChevronDown,
   MapPin,
   FileSpreadsheet,
+  Loader2,
 } from "lucide-react";
-import { getAccessToken } from "@/lib/auth";
+import { getAccessToken, authFetch } from "@/lib/auth";
 import { useAdmin } from "./layout";
 import toast from "react-hot-toast";
 
@@ -39,8 +40,8 @@ const BhilwaraOrderMap = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="h-[380px] w-full flex flex-col items-center justify-center rounded-2xl bg-gray-50 dark:bg-[#111118] border border-gray-200 dark:border-[#1e1e2a]">
-        <RefreshCw className="w-6 h-6 animate-spin text-blue-500 mb-2" />
+      <div className="h-[380px] w-full flex flex-col items-center justify-center rounded-xl bg-gray-50 dark:bg-[#111118] border border-gray-200 dark:border-[#1e1e2a]">
+        <Loader2 className="w-6 h-6 animate-spin text-blue-500 mb-2" />
         <span className="text-xs font-medium text-gray-500 dark:text-zinc-500">Loading Bhilwara Order Heatmap...</span>
       </div>
     ),
@@ -139,18 +140,8 @@ function PerformanceChart({ orders, isDark }) {
     const w = rect.width;
     const h = rect.height;
 
-    // Get last 14 days of order counts, anchored to the most recent order date
-    let referenceDate = new Date();
-    if (orders && orders.length > 0) {
-      const validDates = orders
-        .filter(o => o.created_at)
-        .map(o => new Date(o.created_at).getTime())
-        .filter(t => !isNaN(t));
-      if (validDates.length > 0) {
-        referenceDate = new Date(Math.max(...validDates));
-      }
-    }
-
+    // Get last 14 days of order counts up to today
+    const referenceDate = new Date();
     const days = [];
     for (let i = 13; i >= 0; i--) {
       const d = new Date(referenceDate);
@@ -374,6 +365,7 @@ export default function AdminDashboardPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [orders, setOrders] = useState([]);
   const [products, setProducts] = useState([]);
+  const [users, setUsers] = useState([]);
   const [riders, setRiders] = useState([]);
   const [lastRefreshed, setLastRefreshed] = useState(null);
 
@@ -382,34 +374,19 @@ export default function AdminDashboardPage() {
   const fetchDashboardData = useCallback(
     async (isSilent = false) => {
       if (!isSilent) setRefreshing(true);
-      const token = getAccessToken();
-      if (!token) return;
 
       try {
-        const headers = {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        };
-
-        const [ordersRes, prodRes, ridersRes, catRes] = await Promise.all([
-          fetch(`${API_URL}/api/v1/orders/`, {
-            headers,
-          }),
-          fetch(`${API_URL}/api/v1/products/`, {
-            headers,
-          }),
-          fetch(
-            `${API_URL}/api/v1/users/?role=DELIVERY`,
-            { headers }
-          ),
-          fetch(`${API_URL}/api/v1/categories/`, {
-            headers,
-          }),
+        const [ordersRes, prodRes, usersRes, catRes] = await Promise.all([
+          authFetch(`${API_URL}/api/v1/orders/`),
+          authFetch(`${API_URL}/api/v1/products/`),
+          authFetch(`${API_URL}/api/v1/users/`),
+          authFetch(`${API_URL}/api/v1/categories/`),
         ]);
 
         let newOrders = [];
         if (ordersRes.ok) {
-          newOrders = await ordersRes.json();
+          const data = await ordersRes.json();
+          newOrders = Array.isArray(data) ? data : (data?.results || []);
           setOrders(newOrders);
 
           const pending = newOrders.filter(
@@ -425,7 +402,7 @@ export default function AdminDashboardPage() {
 
         if (prodRes.ok) {
           const prodData = await prodRes.json();
-          setProducts(Array.isArray(prodData) ? prodData : []);
+          setProducts(Array.isArray(prodData) ? prodData : (prodData?.results || []));
         }
 
         if (catRes.ok) {
@@ -433,9 +410,10 @@ export default function AdminDashboardPage() {
           setCategories(Array.isArray(catData) ? catData : (catData?.results || []));
         }
 
-        if (ridersRes.ok) {
-          const ridersData = await ridersRes.json();
-          const list = Array.isArray(ridersData) ? ridersData : (ridersData?.results || []);
+        if (usersRes.ok) {
+          const usersData = await usersRes.json();
+          const list = Array.isArray(usersData) ? usersData : (usersData?.results || []);
+          setUsers(list);
           setRiders(list.filter((u) => u.role === "DELIVERY"));
         }
 
@@ -467,19 +445,8 @@ export default function AdminDashboardPage() {
     return () => clearInterval(timer);
   }, [fetchDashboardData]);
 
-  // Calculations
-  let referenceDate = new Date();
-  if (orders && orders.length > 0) {
-    const validDates = orders
-      .filter(o => o.created_at)
-      .map(o => new Date(o.created_at).getTime())
-      .filter(t => !isNaN(t));
-    if (validDates.length > 0) {
-      referenceDate = new Date(Math.max(...validDates));
-    }
-  }
-
-  const today = referenceDate;
+  // Calculations (Real-time Today)
+  const today = new Date();
   const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
   const endOfToday = startOfToday + 24 * 60 * 60 * 1000;
   
@@ -548,11 +515,63 @@ export default function AdminDashboardPage() {
     CANCELLED: 0,
   };
 
+  // Fast customer & user lookup dictionary
+  const usersMap = useMemo(() => {
+    const map = {};
+    users.forEach((u) => {
+      if (u.id) map[u.id] = u;
+      if (u.username) map[u.username] = u;
+      if (u.phone_number) map[u.phone_number] = u;
+    });
+    return map;
+  }, [users]);
+
+  // Dynamic customer extractor for orders
+  const getCustomerDetails = useCallback((order) => {
+    if (!order) return { name: "Customer", phone: "" };
+
+    if (order.customer && typeof order.customer === "object") {
+      const name = order.customer.first_name
+        ? `${order.customer.first_name} ${order.customer.last_name || ""}`.trim()
+        : (order.customer.username || order.customer_name || "Customer");
+      const phone = order.customer.phone_number || order.customer.phone || "";
+      return { name, phone };
+    }
+
+    const matchedUser = usersMap[order.customer] || (order.customer_name ? usersMap[order.customer_name] : null);
+    if (matchedUser) {
+      const name = matchedUser.first_name
+        ? `${matchedUser.first_name} ${matchedUser.last_name || ""}`.trim()
+        : (matchedUser.username || order.customer_name || `Customer #${matchedUser.id}`);
+      const phone = matchedUser.phone_number || "";
+      return { name, phone };
+    }
+
+    let name = order.customer_name || order.customer_username || "";
+    let phone = order.customer_phone || order.phone_number || order.phone || "";
+
+    if (!phone && name && /^\+?[0-9]{10,12}$/.test(name.trim())) {
+      phone = name.trim();
+      name = `Customer (${phone})`;
+    }
+
+    if (!phone && order.delivery_address) {
+      const match = order.delivery_address.match(/(?:\+?91[\-\s]?)?([6-9]\d{9})/);
+      if (match) {
+        phone = match[1];
+      }
+    }
+
+    return {
+      name: name || (order.customer ? `Customer #${order.customer}` : "Customer"),
+      phone: phone || "",
+    };
+  }, [usersMap]);
+
   const activityFeed = orders
     .slice(0, 6)
     .map((o) => {
-      const name =
-        o.customer?.first_name || o.customer?.username || "Customer";
+      const { name } = getCustomerDetails(o);
       const initial = name.charAt(0).toUpperCase();
       let message = "";
       switch (o.status) {
@@ -617,7 +636,7 @@ export default function AdminDashboardPage() {
     }
   };
 
-  const currentDate = referenceDate.toLocaleDateString("en-IN", {
+  const currentDate = today.toLocaleDateString("en-IN", {
     day: "numeric",
     month: "long",
     year: "numeric",
@@ -626,22 +645,15 @@ export default function AdminDashboardPage() {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh]">
-        <RefreshCw
-          className="w-8 h-8 animate-spin mb-3"
-          style={{ color: "#4A7DFF" }}
-        />
-        <p
-          className="text-sm font-medium"
-          style={{ color: "#8C8FA7" }}
-        >
+        <div className="w-12 h-12 rounded-xl bg-blue-500/10 dark:bg-blue-500/20 flex items-center justify-center mb-3">
+          <Loader2 className="w-6 h-6 text-blue-600 dark:text-blue-400 animate-spin" />
+        </div>
+        <p className="text-xs font-semibold text-slate-500 dark:text-zinc-400">
           Loading Store Operations...
         </p>
       </div>
     );
   }
-
-  const isHistorical = new Date().toDateString() !== referenceDate.toDateString();
-  const dateLabel = isHistorical ? "Latest Activity: " + currentDate : currentDate;
 
   return (
     <div className="w-full space-y-6">
@@ -661,33 +673,13 @@ export default function AdminDashboardPage() {
           <div
             className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium shadow-xs"
             style={{
-              background: isDark
-                ? isHistorical
-                  ? "rgba(245,158,11,0.12)"
-                  : "#181824"
-                : isHistorical
-                ? "#FEF3C7"
-                : "#fff",
-              color: isDark
-                ? isHistorical
-                  ? "#F59E0B"
-                  : "#94a3b8"
-                : isHistorical
-                ? "#D97706"
-                : "#64748b",
-              border: `1px solid ${
-                isDark
-                  ? isHistorical
-                    ? "rgba(245,158,11,0.25)"
-                    : "#272738"
-                  : isHistorical
-                  ? "#FDE68A"
-                  : "#e2e8f0"
-              }`,
+              background: isDark ? "#181824" : "#fff",
+              color: isDark ? "#94a3b8" : "#64748b",
+              border: `1px solid ${isDark ? "#272738" : "#e2e8f0"}`,
             }}
           >
             <CalendarDays size={14} className="text-blue-500" />
-            <span>{dateLabel}</span>
+            <span>{currentDate}</span>
           </div>
           <button
             onClick={() => fetchDashboardData(false)}
@@ -704,7 +696,7 @@ export default function AdminDashboardPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Today's Sales */}
         <div
-          className="dash-fade-up p-5 rounded-2xl border transition-all"
+          className="dash-fade-up p-5 rounded-xl border transition-all"
           style={{
             background: isDark ? "#111118" : "#fff",
             borderColor: isDark ? "#1e1e2a" : "#ECEDF1",
@@ -734,7 +726,7 @@ export default function AdminDashboardPage() {
 
         {/* Delivered Orders */}
         <div
-          className="dash-fade-up p-5 rounded-2xl border transition-all"
+          className="dash-fade-up p-5 rounded-xl border transition-all"
           style={{
             background: isDark ? "#111118" : "#fff",
             borderColor: isDark ? "#1e1e2a" : "#ECEDF1",
@@ -744,7 +736,7 @@ export default function AdminDashboardPage() {
             <span className="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-zinc-400">
               Completed Deliveries
             </span>
-            <div className="w-8 h-8 rounded-xl bg-teal-500/10 text-teal-500 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
               <CheckCircle2 size={16} />
             </div>
           </div>
@@ -768,7 +760,7 @@ export default function AdminDashboardPage() {
 
         {/* Pending & On-Road Fleet */}
         <div
-          className="dash-fade-up p-5 rounded-2xl border transition-all"
+          className="dash-fade-up p-5 rounded-xl border transition-all"
           style={{
             background: isDark ? "#111118" : "#fff",
             borderColor: isDark ? "#1e1e2a" : "#ECEDF1",
@@ -802,7 +794,7 @@ export default function AdminDashboardPage() {
 
         {/* Fleet Efficiency & Stock Alert */}
         <div
-          className="dash-fade-up p-5 rounded-2xl border transition-all flex items-center justify-between"
+          className="dash-fade-up p-5 rounded-xl border transition-all flex items-center justify-between"
           style={{
             background: isDark ? "#111118" : "#fff",
             borderColor: isDark ? "#1e1e2a" : "#ECEDF1",
@@ -818,7 +810,7 @@ export default function AdminDashboardPage() {
               </span>
             </div>
             <Link
-              href="/inventory"
+              href="/products"
               className="text-[11px] font-medium text-rose-500 hover:underline block mt-1"
             >
               {outOfStockProducts.length > 0
@@ -850,7 +842,7 @@ export default function AdminDashboardPage() {
 
         {/* Current Tasks / Recent Orders */}
         <div
-          className="lg:col-span-6 p-5 sm:p-6 rounded-2xl border transition-all flex flex-col justify-between"
+          className="lg:col-span-6 p-5 sm:p-6 rounded-xl border transition-all flex flex-col justify-between"
           style={{
             background: isDark ? "#111118" : "#fff",
             borderColor: isDark ? "#1e1e2a" : "#ECEDF1",
@@ -915,7 +907,7 @@ export default function AdminDashboardPage() {
                           </span>
                         </div>
                         <p className="text-[11px] text-slate-500 dark:text-zinc-400 truncate mt-0.5">
-                          {order.customer?.first_name || order.customer?.username || "Customer"} • ₹
+                          {getCustomerDetails(order).name} • ₹
                           {parseFloat(order.total_amount || 0).toFixed(0)} •{" "}
                           {order.payment_method || "COD"}
                         </p>
@@ -966,7 +958,7 @@ export default function AdminDashboardPage() {
 
           {/* Quick Shortcuts */}
           <div
-            className="p-5 rounded-2xl border transition-all flex-1"
+            className="p-5 rounded-xl border transition-all flex-1"
             style={{
               background: isDark ? "#111118" : "#fff",
               borderColor: isDark ? "#1e1e2a" : "#ECEDF1",
@@ -980,7 +972,7 @@ export default function AdminDashboardPage() {
             <div className="grid grid-cols-2 gap-2">
               {[
                 { name: "Live Orders", href: "/orders", icon: ShoppingBag, color: "#2563EB" },
-                { name: "Godown Stock", href: "/inventory", icon: Package, color: "#3B82F6" },
+                { name: "Products Catalog", href: "/products", icon: Package, color: "#3B82F6" },
                 { name: "Riders Fleet", href: "/riders", icon: Bike, color: "#8B5CF6" },
                 { name: "Assignments", href: "/deliveries", icon: Clock, color: "#06B6D4" },
                 { name: "Excel Import", href: "/import", icon: FileSpreadsheet, color: "#F59E0B" },

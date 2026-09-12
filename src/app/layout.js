@@ -24,6 +24,7 @@ import {
   HelpCircle,
   MapPin,
   ClipboardList,
+  Loader2,
 } from "lucide-react";
 import { getAccessToken, getUser, clearAuth } from "@/lib/auth";
 import "./globals.css";
@@ -31,12 +32,12 @@ import "./globals.css";
 // Context for global admin state (sound, active counts, theme)
 export const AdminContext = createContext({
   soundEnabled: true,
-  setSoundEnabled: () => {},
+  setSoundEnabled: () => { },
   pendingCount: 0,
-  setPendingCount: () => {},
-  playChime: () => {},
+  setPendingCount: () => { },
+  playChime: () => { },
   theme: "light",
-  toggleTheme: () => {},
+  toggleTheme: () => { },
 });
 
 export function useAdmin() {
@@ -50,29 +51,29 @@ function playNotificationChime() {
     if (!AudioCtx) return;
     const ctx = new AudioCtx();
 
-    // Tone 1: 587.33 Hz (D5)
-    const osc1 = ctx.createOscillator();
-    const gain1 = ctx.createGain();
-    osc1.type = "sine";
-    osc1.frequency.setValueAtTime(587.33, ctx.currentTime);
-    gain1.gain.setValueAtTime(0.3, ctx.currentTime);
-    gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
-    osc1.connect(gain1);
-    gain1.connect(ctx.destination);
-    osc1.start(ctx.currentTime);
-    osc1.stop(ctx.currentTime + 0.35);
+    // High urgency multi-tone audio alert sequence
+    const tones = [
+      { freq: 880, start: 0, duration: 0.12 },
+      { freq: 1320, start: 0.15, duration: 0.12 },
+      { freq: 1760, start: 0.30, duration: 0.25 },
+      // Second burst
+      { freq: 880, start: 0.65, duration: 0.12 },
+      { freq: 1320, start: 0.80, duration: 0.12 },
+      { freq: 1760, start: 0.95, duration: 0.35 },
+    ];
 
-    // Tone 2: 880 Hz (A5)
-    const osc2 = ctx.createOscillator();
-    const gain2 = ctx.createGain();
-    osc2.type = "sine";
-    osc2.frequency.setValueAtTime(880, ctx.currentTime + 0.15);
-    gain2.gain.setValueAtTime(0.35, ctx.currentTime + 0.15);
-    gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
-    osc2.connect(gain2);
-    gain2.connect(ctx.destination);
-    osc2.start(ctx.currentTime + 0.15);
-    osc2.stop(ctx.currentTime + 0.6);
+    tones.forEach(({ freq, start, duration }) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + start);
+      gain.gain.setValueAtTime(0.8, ctx.currentTime + start);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + start + duration);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(ctx.currentTime + start);
+      osc.stop(ctx.currentTime + start + duration);
+    });
   } catch (e) {
     console.log("Audio notification failed or blocked:", e);
   }
@@ -131,7 +132,6 @@ export default function RootLayout({ children }) {
     { name: "Live Orders", href: "/orders", icon: ShoppingBag, badge: pendingCount },
     { name: "Products", href: "/products", icon: Package },
     { name: "Order Map", href: "/order-map", icon: MapPin },
-    { name: "Quick Stock", href: "/inventory", icon: Package },
     { name: "Delivery Boys", href: "/riders", icon: Bike },
     { name: "Delivery Assignments", href: "/deliveries", icon: ClipboardList },
     { name: "App Slides", href: "/slides", icon: ImageIcon },
@@ -150,12 +150,17 @@ export default function RootLayout({ children }) {
 
   if (pathname === "/login") {
     return (
-      <html lang="en" className={isDark ? "dark" : ""}>
+      <html lang="en" className={isDark ? "dark" : ""} suppressHydrationWarning>
         <head>
           <title>FreshInBasket Admin | Authentication</title>
           <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+          <link rel="icon" href="/favicon.ico" sizes="any" />
+          <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+          <link rel="preconnect" href="https://fonts.googleapis.com" />
+          <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+          <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" />
         </head>
-        <body className={isDark ? "dark" : ""}>
+        <body className={isDark ? "dark" : ""} suppressHydrationWarning>
           <Toaster position="top-right" />
           {children}
         </body>
@@ -164,13 +169,18 @@ export default function RootLayout({ children }) {
   }
 
   return (
-    <html lang="en" className={isDark ? "dark" : ""}>
+    <html lang="en" className={isDark ? "dark" : ""} suppressHydrationWarning>
       <head>
         <title>FreshInBasket Admin Console</title>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" />
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
       </head>
-      <body className={isDark ? "dark" : ""}>
+      <body className={isDark ? "dark" : ""} suppressHydrationWarning>
         <Toaster position="top-right" />
         <AdminContext.Provider
           value={{
@@ -190,16 +200,14 @@ export default function RootLayout({ children }) {
               className="min-h-screen flex flex-col items-center justify-center p-4 transition-colors"
               style={{ background: isDark ? "#0a0a0f" : "#F7F8FA" }}
             >
-              <div
-                className="w-10 h-10 rounded-full animate-spin mb-4"
-                style={{
-                  border: `2px solid ${isDark ? "#333" : "#E2E4EA"}`,
-                  borderTopColor: isDark ? "#fff" : "#4A7DFF",
-                }}
-              />
+              <div className="relative flex items-center justify-center mb-4">
+                <div className="w-12 h-12 rounded-xl bg-blue-500/10 dark:bg-blue-500/20 flex items-center justify-center">
+                  <Loader2 className="w-6 h-6 text-blue-600 dark:text-blue-400 animate-spin" />
+                </div>
+              </div>
               <p
-                className="text-xs uppercase tracking-widest"
-                style={{ color: isDark ? "#666" : "#8C8FA7" }}
+                className="text-xs font-semibold uppercase tracking-widest"
+                style={{ color: isDark ? "#888" : "#64748b" }}
               >
                 Verifying Admin Access…
               </p>
@@ -281,8 +289,8 @@ export default function RootLayout({ children }) {
                       background: soundEnabled
                         ? "#4A7DFF"
                         : isDark
-                        ? "#1a1a26"
-                        : "#F0F1F5",
+                          ? "#1a1a26"
+                          : "#F0F1F5",
                       color: soundEnabled ? "#fff" : isDark ? "#666" : "#8C8FA7",
                     }}
                   >
@@ -411,8 +419,8 @@ export default function RootLayout({ children }) {
                               color: isActive
                                 ? "#4A7DFF"
                                 : isDark
-                                ? "#888"
-                                : "#6B6E80",
+                                  ? "#888"
+                                  : "#6B6E80",
                               fontWeight: isActive ? 600 : 500,
                             }}
                             onMouseEnter={(e) => {
@@ -436,8 +444,8 @@ export default function RootLayout({ children }) {
                                   color: isActive
                                     ? "#4A7DFF"
                                     : isDark
-                                    ? "#666"
-                                    : "#A0A3B5",
+                                      ? "#666"
+                                      : "#A0A3B5",
                                 }}
                               />
                               <span>{item.name}</span>
@@ -463,7 +471,7 @@ export default function RootLayout({ children }) {
                   {/* Bottom Session Box & Logout */}
                   <div className="space-y-2 mt-6">
                     <div
-                      className="p-4 rounded-2xl"
+                      className="p-4 rounded-xl"
                       style={{
                         background: isDark
                           ? "linear-gradient(135deg, rgba(74,125,255,0.08), rgba(108,92,231,0.08))"
@@ -576,8 +584,8 @@ export default function RootLayout({ children }) {
                                   color: isActive
                                     ? "#4A7DFF"
                                     : isDark
-                                    ? "#888"
-                                    : "#6B6E80",
+                                      ? "#888"
+                                      : "#6B6E80",
                                   fontWeight: isActive ? 600 : 500,
                                 }}
                               >
@@ -657,8 +665,8 @@ export default function RootLayout({ children }) {
                         color: isActive
                           ? "#4A7DFF"
                           : isDark
-                          ? "#555"
-                          : "#8C8FA7",
+                            ? "#555"
+                            : "#8C8FA7",
                         fontWeight: isActive ? 600 : 400,
                       }}
                     >
@@ -696,3 +704,4 @@ export default function RootLayout({ children }) {
     </html>
   );
 }
+

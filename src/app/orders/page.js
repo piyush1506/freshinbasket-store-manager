@@ -18,8 +18,9 @@ import {
   Calendar,
   ArrowRight,
   Package,
+  Loader2,
 } from "lucide-react";
-import { getAccessToken } from "@/lib/auth";
+import { getAccessToken, authFetch } from "@/lib/auth";
 import { useAdmin } from "../layout";
 import toast from "react-hot-toast";
 
@@ -28,6 +29,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 export default function AdminOrdersPage() {
   const { playChime, setPendingCount } = useAdmin();
   const [orders, setOrders] = useState([]);
+  const [users, setUsers] = useState([]);
   const [riders, setRiders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -37,39 +39,34 @@ export default function AdminOrdersPage() {
   const [assignModalOrder, setAssignModalOrder] = useState(null);
   const [assigning, setAssigning] = useState(false);
 
-  // Fetch orders and riders
+  // Fetch orders and all users
   const fetchOrders = useCallback(async (isSilent = false) => {
     if (!isSilent) setRefreshing(true);
-    const token = getAccessToken();
-    if (!token) return;
 
     try {
-      const headers = {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      };
-
-      const [ordersRes, ridersRes] = await Promise.all([
-        fetch(`${API_URL}/api/v1/orders/`, { headers }),
-        fetch(`${API_URL}/api/v1/users/?role=DELIVERY`, { headers }),
+      const [ordersRes, usersRes] = await Promise.all([
+        authFetch(`${API_URL}/api/v1/orders/`),
+        authFetch(`${API_URL}/api/v1/users/`),
       ]);
 
       if (ordersRes.ok) {
         const data = await ordersRes.json();
-        setOrders(data);
+        const list = Array.isArray(data) ? data : (data?.results || []);
+        setOrders(list);
 
-        const pending = data.filter((o) => o.status === "PENDING" || o.status === "CONFIRMED");
+        const pending = list.filter((o) => o.status === "PENDING" || o.status === "CONFIRMED");
         setPendingCount(pending.length);
 
-        if (isSilent && data.length > orders.length) {
+        if (isSilent && list.length > orders.length) {
           playChime();
           toast.success("New Order Received!", { icon: "🔔" });
         }
       }
 
-      if (ridersRes.ok) {
-        const ridersData = await ridersRes.json();
-        const list = Array.isArray(ridersData) ? ridersData : (ridersData?.results || []);
+      if (usersRes.ok) {
+        const usersData = await usersRes.json();
+        const list = Array.isArray(usersData) ? usersData : (usersData?.results || []);
+        setUsers(list);
         setRiders(list.filter((u) => u.role === "DELIVERY"));
       }
     } catch (err) {
@@ -90,6 +87,64 @@ export default function AdminOrdersPage() {
     }, 12000);
     return () => clearInterval(timer);
   }, [fetchOrders]);
+
+  // Fast customer & user lookup dictionary
+  const usersMap = useMemo(() => {
+    const map = {};
+    users.forEach((u) => {
+      if (u.id) map[u.id] = u;
+      if (u.username) map[u.username] = u;
+      if (u.phone_number) map[u.phone_number] = u;
+    });
+    return map;
+  }, [users]);
+
+  // Dynamic customer extractor for orders
+  const getCustomerDetails = useCallback((order) => {
+    if (!order) return { name: "Valued Customer", phone: "" };
+
+    // 1. If order.customer is already a populated object
+    if (order.customer && typeof order.customer === "object") {
+      const name = order.customer.first_name
+        ? `${order.customer.first_name} ${order.customer.last_name || ""}`.trim()
+        : (order.customer.username || order.customer_name || "Customer");
+      const phone = order.customer.phone_number || order.customer.phone || "";
+      return { name, phone };
+    }
+
+    // 2. Lookup in users list by customer ID or customer_name
+    const matchedUser = usersMap[order.customer] || (order.customer_name ? usersMap[order.customer_name] : null);
+    if (matchedUser) {
+      const name = matchedUser.first_name
+        ? `${matchedUser.first_name} ${matchedUser.last_name || ""}`.trim()
+        : (matchedUser.username || order.customer_name || `Customer #${matchedUser.id}`);
+      const phone = matchedUser.phone_number || "";
+      return { name, phone };
+    }
+
+    // 3. Check direct order properties
+    let name = order.customer_name || order.customer_username || "";
+    let phone = order.customer_phone || order.phone_number || order.phone || "";
+
+    // 4. If name looks like a phone number (e.g. 10-digit number like 9461877701)
+    if (!phone && name && /^\+?[0-9]{10,12}$/.test(name.trim())) {
+      phone = name.trim();
+      name = `Customer (${phone})`;
+    }
+
+    // 5. Extract phone number embedded in delivery address string
+    if (!phone && order.delivery_address) {
+      const match = order.delivery_address.match(/(?:\+?91[\-\s]?)?([6-9]\d{9})/);
+      if (match) {
+        phone = match[1];
+      }
+    }
+
+    return {
+      name: name || (order.customer ? `Customer #${order.customer}` : "Valued Customer"),
+      phone: phone || "",
+    };
+  }, [usersMap]);
 
   const toggleExpand = (id) => {
     setExpandedOrders((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -188,8 +243,8 @@ export default function AdminOrdersPage() {
           <div>Date: ${new Date(order.created_at).toLocaleString()}</div>
           <div>Slot: ${order.delivery_slot || "Regular Slot"}</div>
           <div class="divider"></div>
-          <div><b>Customer:</b> ${order.customer?.first_name || order.customer?.username || "Customer"}</div>
-          <div><b>Phone:</b> ${order.customer?.phone_number || "N/A"}</div>
+          <div><b>Customer:</b> ${getCustomerDetails(order).name}</div>
+          <div><b>Phone:</b> ${getCustomerDetails(order).phone || "N/A"}</div>
           <div><b>Address:</b> ${order.delivery_address || "N/A"}</div>
           <div class="divider"></div>
           <div class="bold" style="margin-bottom: 6px;">ITEMS:</div>
@@ -225,18 +280,19 @@ export default function AdminOrdersPage() {
           : order.status === statusFilter;
 
       const q = searchQuery.toLowerCase();
+      const { name: custName, phone: custPhone } = getCustomerDetails(order);
+
       const matchesSearch =
         !q ||
         order.id?.toString().includes(q) ||
         (order.order_number && order.order_number.toLowerCase().includes(q)) ||
-        (order.customer?.username && order.customer.username.toLowerCase().includes(q)) ||
-        (order.customer?.first_name && order.customer.first_name.toLowerCase().includes(q)) ||
-        (order.customer?.phone_number && order.customer.phone_number.includes(q)) ||
+        (custName && custName.toLowerCase().includes(q)) ||
+        (custPhone && custPhone.includes(q)) ||
         (order.delivery_address && order.delivery_address.toLowerCase().includes(q));
 
       return matchesStatus && matchesSearch;
     });
-  }, [orders, statusFilter, searchQuery]);
+  }, [orders, statusFilter, searchQuery, getCustomerDetails]);
 
   const pendingCountTotal = orders.filter((o) => o.status === "PENDING" || o.status === "CONFIRMED").length;
   const outForDeliveryCount = orders.filter((o) => o.status === "OUT_FOR_DELIVERY").length;
@@ -245,27 +301,32 @@ export default function AdminOrdersPage() {
   const statusConfig = {
     PENDING: {
       label: "Needs Packing",
-      badge: "bg-[#4A7DFF]/10 text-[#4A7DFF] border-[#4A7DFF]/20",
-      dot: "bg-[#4A7DFF]",
+      badge: "bg-transparent text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-700/80",
+      dot: "bg-amber-500",
     },
     CONFIRMED: {
       label: "Confirmed",
-      badge: "bg-[#4A7DFF]/10 text-[#4A7DFF] border-[#4A7DFF]/20",
-      dot: "bg-[#4A7DFF]",
+      badge: "bg-transparent text-blue-600 dark:text-blue-400 border-blue-300 dark:border-blue-700/80",
+      dot: "bg-blue-500",
     },
     OUT_FOR_DELIVERY: {
       label: "On the Road",
-      badge: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
+      badge: "bg-transparent text-purple-600 dark:text-purple-400 border-purple-300 dark:border-purple-700/80",
       dot: "bg-purple-500",
     },
     DELIVERED: {
       label: "Delivered",
-      badge: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+      badge: "bg-transparent text-emerald-600 dark:text-emerald-400 border-emerald-300 dark:border-emerald-700/80",
       dot: "bg-emerald-500",
+    },
+    UNDELIVERED: {
+      label: "Undelivered",
+      badge: "bg-transparent text-rose-600 dark:text-rose-400 border-rose-300 dark:border-rose-700/80",
+      dot: "bg-rose-500",
     },
     CANCELLED: {
       label: "Cancelled",
-      badge: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
+      badge: "bg-transparent text-rose-600 dark:text-rose-400 border-rose-300 dark:border-rose-700/80",
       dot: "bg-rose-500",
     },
   };
@@ -275,13 +336,13 @@ export default function AdminOrdersPage() {
       {/* HEADER SECTION */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 dash-fade-up">
         <div>
-          <h1 className="bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-300 bg-clip-text text-transparent drop-shadow-sm text-2xl sm:text-3xl font-semibold flex items-center gap-2 tracking-tight">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#4A7DFF] to-[#6C5CE7] flex items-center justify-center">
+          <h1 className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 dark:from-blue-400 dark:via-indigo-300 dark:to-purple-400 bg-clip-text text-transparent drop-shadow-sm text-2xl sm:text-3xl font-extrabold flex items-center gap-2 tracking-tight">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center shadow-sm">
               <ShoppingBag className="text-white w-5 h-5" />
             </div>
             Dispatch
           </h1>
-          <p className="text-sm font-medium text-gray-700 dark:text-zinc-300 mt-1 ml-[48px]">
+          <p className="text-sm font-medium text-slate-600 dark:text-zinc-300 mt-1 ml-[48px]">
             Manage live orders, assign riders, and communicate with customers
           </p>
         </div>
@@ -289,9 +350,9 @@ export default function AdminOrdersPage() {
         <button
           onClick={() => fetchOrders(false)}
           disabled={refreshing}
-          className="self-start sm:self-auto flex items-center gap-2 bg-white dark:bg-[#111118] border border-slate-300 dark:border-[#1e1e2a] px-4 py-2.5 rounded-lg text-xs font-semibold text-slate-700 dark:text-zinc-100 hover:-translate-y-0.5 active:scale-95 transition-all cursor-pointer"
+          className="self-start sm:self-auto flex items-center gap-2 bg-white dark:bg-[#111118] border border-slate-200 dark:border-[#1e1e2a] px-4 py-2.5 rounded-lg text-xs font-semibold text-slate-700 dark:text-zinc-100 hover:border-blue-500 hover:text-blue-600 active:scale-95 transition-all cursor-pointer shadow-xs"
         >
-          <RefreshCw size={14} className={refreshing ? "animate-spin text-[#4A7DFF]" : "text-gray-700 dark:text-zinc-300"} />
+          <RefreshCw size={14} className={refreshing ? "animate-spin text-blue-600" : "text-blue-600 dark:text-blue-400"} />
           <span>{refreshing ? "Syncing Orders..." : "Sync Latest"}</span>
         </button>
       </div>
@@ -301,30 +362,30 @@ export default function AdminOrdersPage() {
         {/* Horizontal Tabs */}
         <div className="flex-1 flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
           {[
-            { id: "ALL", label: "All Orders", count: orders.length },
-            { id: "PENDING", label: "Needs Packing", count: pendingCountTotal, activeColor: "bg-slate-700 dark:bg-zinc-100 text-white dark:text-slate-800" },
-            { id: "OUT_FOR_DELIVERY", label: "Out for Delivery", count: outForDeliveryCount },
-            { id: "DELIVERED", label: "Delivered", count: deliveredCount },
-            { id: "CANCELLED", label: "Cancelled" },
+            { id: "ALL", label: "All Orders", count: orders.length, textColor: "text-slate-900 dark:text-white", countColor: "text-blue-600 dark:text-blue-400" },
+            { id: "PENDING", label: "Needs Packing", count: pendingCountTotal, textColor: "text-amber-600 dark:text-amber-400", countColor: "text-amber-600 dark:text-amber-400" },
+            { id: "OUT_FOR_DELIVERY", label: "Out for Delivery", count: outForDeliveryCount, textColor: "text-purple-600 dark:text-purple-400", countColor: "text-purple-600 dark:text-purple-400" },
+            { id: "DELIVERED", label: "Delivered", count: deliveredCount, textColor: "text-emerald-600 dark:text-emerald-400", countColor: "text-emerald-600 dark:text-emerald-400" },
+            { id: "CANCELLED", label: "Cancelled", textColor: "text-rose-600 dark:text-rose-400", countColor: "text-rose-600 dark:text-rose-400" },
           ].map((tab) => {
             const isActive = statusFilter === tab.id;
             return (
               <button
                 key={tab.id}
                 onClick={() => setStatusFilter(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all cursor-pointer border ${
                   isActive
-                    ? tab.activeColor || "bg-slate-700 dark:bg-zinc-100 text-white dark:text-slate-800"
-                    : "bg-white dark:bg-[#111118] text-slate-700 dark:text-zinc-100 border border-slate-300 dark:border-[#1e1e2a] hover:bg-slate-100 dark:hover:bg-[#1a1a26]"
+                    ? "bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-slate-900 dark:border-white shadow-sm"
+                    : `bg-white dark:bg-[#111118] ${tab.textColor} border-slate-200 dark:border-[#1e1e2a] hover:border-slate-300 dark:hover:border-[#2a2a38]`
                 }`}
               >
                 <span>{tab.label}</span>
                 {tab.count !== undefined && (
                   <span
-                    className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                    className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold ${
                       isActive
-                        ? tab.id === "PENDING" ? "bg-white/20 text-white dark:text-slate-800" : "bg-slate-700/20 dark:bg-slate-200/20"
-                        : "bg-slate-200 dark:bg-[#1e1e2a] text-slate-700 dark:text-zinc-100"
+                        ? "bg-white/20 dark:bg-slate-900/20 text-white dark:text-slate-900"
+                        : `${tab.countColor} bg-slate-100 dark:bg-[#1a1a26]`
                     }`}
                   >
                     {tab.count}
@@ -337,13 +398,13 @@ export default function AdminOrdersPage() {
 
         {/* Search Input */}
         <div className="relative w-full lg:w-[320px] shrink-0">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-700 dark:text-zinc-300 w-4 h-4" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-500 w-4 h-4" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search by ID, Name, Phone..."
-            className="w-full pl-11 pr-4 py-2.5 bg-white dark:bg-[#111118] border border-slate-300 dark:border-[#1e1e2a] rounded-lg text-xs text-slate-700 dark:text-zinc-100 placeholder-slate-600 dark:placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-[#4A7DFF]/50 transition-all font-medium"
+            className="w-full pl-11 pr-4 py-2.5 bg-white dark:bg-[#111118] border border-slate-200 dark:border-[#1e1e2a] rounded-lg text-xs text-slate-800 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition-all font-medium"
           />
         </div>
       </div>
@@ -351,18 +412,18 @@ export default function AdminOrdersPage() {
       {/* ORDERS LIST */}
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20">
-          <div className="w-12 h-12 rounded-xl bg-[#4A7DFF]/10 flex items-center justify-center mb-4">
-            <RefreshCw className="w-6 h-6 text-[#4A7DFF] animate-spin" />
+          <div className="w-12 h-12 rounded-xl bg-white dark:bg-[#111118] flex items-center justify-center mb-4 border border-slate-200 dark:border-[#1e1e2a] shadow-xs">
+            <Loader2 className="w-6 h-6 text-blue-600 dark:text-blue-400 animate-spin" />
           </div>
-          <p className="text-sm font-semibold text-slate-700 dark:text-zinc-100">Fetching live orders...</p>
+          <p className="text-xs font-semibold text-blue-600 dark:text-blue-400">Fetching live orders...</p>
         </div>
       ) : filteredOrders.length === 0 ? (
-        <div className="bg-white dark:bg-[#111118]/50 backdrop-blur-xl rounded-xl p-16 text-center border border-slate-300/80 dark:border-[#1e1e2a]/50 dash-fade-up dash-fade-up-d2">
-          <div className="w-20 h-20 bg-slate-100 dark:bg-[#1a1a26] rounded-[24px] flex items-center justify-center mx-auto mb-5 rotate-3">
-            <ShoppingBag className="w-8 h-8 text-slate-600 dark:text-slate-400" />
+        <div className="bg-white dark:bg-[#111118] rounded-xl p-16 text-center border border-slate-200 dark:border-[#1e1e2a] dash-fade-up dash-fade-up-d2">
+          <div className="w-20 h-20 bg-white dark:bg-[#1a1a26] rounded-[24px] flex items-center justify-center mx-auto mb-5 rotate-3 border border-slate-200 dark:border-[#2a2a35]">
+            <ShoppingBag className="w-8 h-8 text-blue-600 dark:text-blue-400" />
           </div>
-          <p className="text-lg font-bold text-slate-700 dark:text-white">No active orders found</p>
-          <p className="text-sm font-medium text-slate-700 dark:text-zinc-300 mt-2 max-w-sm mx-auto">
+          <p className="text-lg font-bold text-slate-800 dark:text-white">No active orders found</p>
+          <p className="text-sm font-medium text-slate-500 dark:text-zinc-400 mt-2 max-w-sm mx-auto">
             {searchQuery ? "Try a different search term or clear the filters" : "There are no orders matching this exact status right now."}
           </p>
         </div>
@@ -372,100 +433,110 @@ export default function AdminOrdersPage() {
             const isExpanded = !!expandedOrders[order.id];
             const cfg = statusConfig[order.status] || {
               label: order.status,
-              badge: "bg-slate-100 text-slate-800 border-slate-200",
+              badge: "bg-transparent text-slate-700 dark:text-zinc-300 border-slate-200 dark:border-[#252530]",
               dot: "bg-slate-400",
             };
             const isPending = order.status === "PENDING" || order.status === "CONFIRMED";
             const isOut = order.status === "OUT_FOR_DELIVERY";
-            const cleanPhone = order.customer?.phone_number?.replace(/\D/g, "");
+            const { name: customerName, phone: customerPhone } = getCustomerDetails(order);
+            const cleanPhone = customerPhone ? customerPhone.replace(/\D/g, "") : "";
+            const displayPhone = cleanPhone
+              ? (cleanPhone.length >= 10 ? `+91 ${cleanPhone.slice(-10)}` : cleanPhone)
+              : (customerPhone || "No phone number");
+
+            const isCOD = order.payment_method === "COD";
 
             return (
               <div
                 key={order.id}
-                className="bg-white dark:bg-[#111118] border border-slate-300 dark:border-[#1e1e2a] hover:border-slate-400 dark:hover:border-[#2a2a35] rounded-xl overflow-hidden shadow-sm flex flex-col justify-between transition-all group/card"
+                className="bg-white dark:bg-[#111118] rounded-xl overflow-hidden flex flex-col justify-between transition-all group/card border border-slate-200 dark:border-[#1e1e2a] hover:border-slate-300 dark:hover:border-[#2a2a38] hover:shadow-md"
               >
                 <div className="p-4 sm:p-5 pb-0 flex-1 flex flex-col relative z-10">
                   {/* HEADER ROW */}
                   <div className="flex items-start justify-between gap-3 mb-3">
                     <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-semibold text-base text-slate-800 dark:text-white tracking-tight">
+                      <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                        <span className="font-extrabold text-base sm:text-lg text-blue-600 dark:text-blue-400 tracking-tight">
                           {order.order_number || `FIB-${order.id}`}
                         </span>
-                        <div className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[10px] font-medium tracking-wide uppercase ${cfg.badge}`}>
+                        <div className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[10px] font-bold tracking-wide uppercase ${cfg.badge}`}>
                           <div className={`w-1.5 h-1.5 rounded-full ${cfg.dot} animate-pulse`} />
                           {cfg.label}
                         </div>
                       </div>
-                      <div className="flex items-center gap-3 text-xs text-slate-600 dark:text-zinc-300 font-medium">
-                        <span className="flex items-center gap-1.5 bg-slate-100 dark:bg-[#1a1a26] px-2 py-1 rounded-md">
-                          <Clock size={12} className="text-slate-600 dark:text-zinc-300" />
-                          {order.created_at
-                            ? new Date(order.created_at).toLocaleString([], {
-                                dateStyle: "short",
-                                timeStyle: "short",
-                              })
-                            : ""}
+                      <div className="flex items-center gap-2 text-xs font-medium flex-wrap">
+                        <span className="flex items-center gap-1.5 bg-transparent text-slate-600 dark:text-zinc-300 px-2 py-1 rounded-md border border-slate-200 dark:border-[#252530]">
+                          <Clock size={12} className="text-blue-500 shrink-0" />
+                          <span>
+                            {order.created_at
+                              ? new Date(order.created_at).toLocaleString([], {
+                                  dateStyle: "short",
+                                  timeStyle: "short",
+                                })
+                              : ""}
+                          </span>
                         </span>
                         {order.delivery_slot && (
-                          <span className="flex items-center gap-1.5 bg-[#4A7DFF]/10 text-[#4A7DFF] dark:bg-[#4A7DFF]/20 px-2 py-1 rounded-md font-medium">
-                            <Calendar size={12} />
-                            {order.delivery_slot}
+                          <span className="flex items-center gap-1.5 bg-transparent text-indigo-600 dark:text-indigo-400 px-2 py-1 rounded-md font-bold border border-slate-200 dark:border-[#252530]">
+                            <Calendar size={12} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
+                            <span>{order.delivery_slot}</span>
                           </span>
                         )}
                       </div>
                     </div>
 
                     <div className="text-right shrink-0">
-                      <p className="text-xl sm:text-2xl font-semibold text-slate-800 dark:text-white tracking-tight">
+                      <p className="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight">
                         ₹{parseFloat(order.total_amount || 0).toFixed(0)}
                       </p>
-                      <p className="text-[10px] font-medium text-slate-500 dark:text-zinc-400 uppercase tracking-wider mt-0.5">
-                        {order.payment_method === "COD" ? "Cash" : "Paid"} • {(order.items || []).length} items
-                      </p>
+                      <div className="flex items-center justify-end gap-1 mt-0.5 text-[10px] font-bold uppercase tracking-wider">
+                        <span className={isCOD ? "text-purple-600 dark:text-purple-400 font-extrabold" : "text-emerald-600 dark:text-emerald-400 font-extrabold"}>
+                          {isCOD ? "CASH" : "PAID"}
+                        </span>
+                        <span className="text-slate-400">•</span>
+                        <span className="text-blue-600 dark:text-blue-400 font-bold">
+                          {(order.items || []).length} ITEMS
+                        </span>
+                      </div>
                     </div>
                   </div>
 
                   {/* CUSTOMER & DELIVERY INFO BLOCK */}
-                  <div className="bg-slate-50 dark:bg-[#1a1a26]/50 rounded-xl p-3 mb-3 border border-slate-200 dark:border-[#252530]">
-                    <div className="flex items-center justify-between mb-3">
+                  <div className="bg-white dark:bg-[#111118] rounded-xl p-3 mb-3 border border-slate-200 dark:border-[#252530]">
+                    <div className="flex items-center justify-between mb-2">
                       <div>
-                        <p className="text-sm font-semibold text-slate-800 dark:text-white">
-                          {order.customer?.first_name || order.customer?.username || "Valued Customer"}
+                        <p className="text-sm font-bold text-slate-900 dark:text-white tracking-tight">
+                          {customerName}
                         </p>
-                        <p className="text-xs text-slate-600 dark:text-zinc-300 font-mono mt-0.5 font-medium">
-                          {order.customer?.phone_number || "No phone number"}
+                        <p className="text-xs text-blue-600 dark:text-blue-400 font-mono mt-0.5 font-bold">
+                          {displayPhone}
                         </p>
                       </div>
                       {cleanPhone && (
                         <div className="flex items-center gap-2">
                           <a
-                            href={`tel:${cleanPhone}`}
-                            className="w-8 h-8 rounded-md bg-white dark:bg-[#252530] border border-slate-300 dark:border-[#2a2a35] flex items-center justify-center text-slate-700 dark:text-slate-100 hover:border-[#4A7DFF] hover:text-[#4A7DFF] transition-colors"
-                            title="Call Customer"
+                            href={`tel:${cleanPhone.length >= 10 ? `+91${cleanPhone.slice(-10)}` : cleanPhone}`}
+                            className="w-8 h-8 rounded-md bg-white dark:bg-[#1a1a26] border border-slate-200 dark:border-[#2a2a35] flex items-center justify-center text-blue-600 dark:text-blue-400 hover:border-blue-400 hover:text-blue-700 transition-colors shadow-xs"
+                            title={`Call ${customerName}`}
                           >
-                            <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" className="opacity-90">
-                              <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
-                            </svg>
+                            <Phone size={13} />
                           </a>
                           <a
-                            href={`https://wa.me/91${cleanPhone}?text=${encodeURIComponent(
-                              `Hello! Your FreshInBasket order #${order.order_number || order.id} is being packed.`
+                            href={`https://wa.me/91${cleanPhone.slice(-10)}?text=${encodeURIComponent(
+                              `Hello ${customerName}! Your FreshInBasket order #${order.order_number || order.id} is being packed.`
                             )}`}
                             target="_blank"
                             rel="noreferrer"
-                            className="w-8 h-8 rounded-md bg-white dark:bg-[#252530] border border-slate-300 dark:border-[#2a2a35] flex items-center justify-center text-slate-700 dark:text-slate-100 hover:border-[#4A7DFF] hover:text-[#4A7DFF] transition-colors"
+                            className="w-8 h-8 rounded-md bg-white dark:bg-[#1a1a26] border border-slate-200 dark:border-[#2a2a35] flex items-center justify-center text-emerald-600 dark:text-emerald-400 hover:border-emerald-400 hover:text-emerald-700 transition-colors shadow-xs"
                             title="Message on WhatsApp"
                           >
-                            <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" className="opacity-90">
-                              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/>
-                            </svg>
+                            <MessageSquare size={13} />
                           </a>
                         </div>
                       )}
                     </div>
-                    <div className="flex items-start gap-2 text-[11px] font-medium text-slate-700 dark:text-zinc-200 leading-snug">
-                      <MapPin size={14} className="text-[#4A7DFF] shrink-0 mt-0.5" />
+                    <div className="flex items-start gap-2 text-[11px] font-medium text-slate-600 dark:text-zinc-300 leading-snug pt-2 border-t border-slate-100 dark:border-[#1e1e2a]">
+                      <MapPin size={14} className="text-rose-500 shrink-0 mt-0.5" />
                       <span>{order.delivery_address || "Delivery address not provided."}</span>
                     </div>
                   </div>
@@ -474,27 +545,27 @@ export default function AdminOrdersPage() {
                   <div className="mb-4">
                     <button
                       onClick={() => toggleExpand(order.id)}
-                      className="w-full flex items-center justify-between py-2 text-xs font-semibold text-slate-700 dark:text-zinc-200 group/btn cursor-pointer"
+                      className="w-full flex items-center justify-between py-2 text-xs font-bold text-slate-800 dark:text-zinc-100 group/btn cursor-pointer"
                     >
                       <span className="flex items-center gap-2">
-                        <Package size={14} className="text-slate-400 group-hover/btn:text-[#4A7DFF] transition-colors" />
-                        Package Contents
+                        <Package size={14} className="text-indigo-500 group-hover/btn:text-indigo-600 transition-colors" />
+                        <span className="text-slate-800 dark:text-white">Package Contents</span>
                       </span>
-                      <div className="flex items-center gap-1.5 text-slate-400 group-hover/btn:text-slate-600 dark:group-hover/btn:text-slate-300 transition-colors bg-slate-100 dark:bg-[#1a1a26] px-2 py-1 rounded-lg">
+                      <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 font-bold transition-colors bg-white dark:bg-[#1a1a26] border border-slate-200 dark:border-[#252530] px-2.5 py-1 rounded-lg">
                         <span>{isExpanded ? "Hide" : "Expand"}</span>
                         {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                       </div>
                     </button>
 
                     {isExpanded && (
-                      <div className="mt-3 space-y-2 border border-slate-100 dark:border-[#252530] rounded-xl p-2 bg-white dark:bg-[#111118]">
+                      <div className="mt-3 space-y-2 border border-slate-200 dark:border-[#252530] rounded-xl p-2 bg-white dark:bg-[#111118]">
                         {(order.items || []).map((item, idx) => (
                           <div
                             key={idx}
-                            className="flex items-center justify-between gap-3 p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-[#1a1a26] transition-colors group/item"
+                            className="flex items-center justify-between gap-3 p-2 rounded-lg bg-white dark:bg-[#1a1a26] border border-slate-200/80 dark:border-[#252530] hover:border-slate-300 dark:hover:border-[#2a2a38] transition-colors group/item"
                           >
                             <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-[#252530] flex items-center justify-center overflow-hidden shrink-0 border border-slate-200 dark:border-[#2a2a35]">
+                              <div className="w-10 h-10 rounded-lg bg-slate-50 dark:bg-[#252530] flex items-center justify-center overflow-hidden shrink-0 border border-slate-200 dark:border-[#2a2a35]">
                                 {item.product_image_url ? (
                                   <img 
                                     src={item.product_image_url} 
@@ -503,19 +574,19 @@ export default function AdminOrdersPage() {
                                     loading="lazy"
                                   />
                                 ) : (
-                                  <ShoppingBag size={14} className="text-slate-400" />
+                                  <ShoppingBag size={14} className="text-blue-500" />
                                 )}
                               </div>
                               <div className="flex flex-col">
-                                <span className="text-xs font-medium text-slate-700 dark:text-white line-clamp-1">
+                                <span className="text-xs font-bold text-slate-900 dark:text-white line-clamp-1">
                                   {item.product_name || "Fresh Produce Item"}
                                 </span>
-                                <span className="text-[10px] font-medium text-slate-500">
+                                <span className="text-[11px] font-bold text-purple-600 dark:text-purple-400">
                                   {!isNaN(Number(item.quantity)) ? Number(item.quantity) : (item.quantity || 1)} × {item.unit_name || item.unit || item.product?.unit || item.product?.unit_name || "kg"}
                                 </span>
                               </div>
                             </div>
-                            <span className="text-xs font-semibold text-slate-700 dark:text-white shrink-0">
+                            <span className="text-xs font-extrabold text-emerald-600 dark:text-emerald-400 shrink-0">
                               ₹{(parseFloat(item.unit_price || item.price || 0) * (!isNaN(Number(item.quantity)) ? Number(item.quantity) : (parseFloat(item.quantity) || 1))).toFixed(0)}
                             </span>
                           </div>
@@ -526,11 +597,11 @@ export default function AdminOrdersPage() {
                 </div>
 
                 {/* BOTTOM ACTION BAR */}
-                <div className="p-3 sm:p-4 border-t border-slate-100 dark:border-[#1e1e2a] flex items-center gap-2 mt-auto">
+                <div className="p-3 sm:p-4 border-t border-slate-100 dark:border-[#1e1e2a] flex items-center gap-2 mt-auto bg-white dark:bg-[#111118]">
                   <button
                     onClick={() => handlePrintReceipt(order)}
                     title="Print Receipt"
-                    className="w-10 h-10 shrink-0 bg-white dark:bg-[#252530] border border-slate-200 dark:border-[#2a2a35] hover:border-[#4A7DFF] hover:text-[#4A7DFF] text-slate-600 dark:text-slate-400 rounded-md flex items-center justify-center transition-all active:scale-95 cursor-pointer"
+                    className="w-10 h-10 shrink-0 bg-white dark:bg-[#1a1a26] border border-slate-200 dark:border-[#2a2a35] hover:border-blue-500 hover:text-blue-600 text-slate-600 dark:text-slate-300 rounded-md flex items-center justify-center transition-all active:scale-95 cursor-pointer shadow-xs"
                   >
                     <Printer size={16} />
                   </button>
@@ -539,15 +610,15 @@ export default function AdminOrdersPage() {
                     <div className="flex items-center gap-2 w-full">
                       <button
                         onClick={() => updateOrderStatus(order.id, "CONFIRMED")}
-                        className="flex-1 px-3 py-2.5 bg-white dark:bg-[#252530] border border-slate-200 dark:border-[#2a2a35] hover:border-[#4A7DFF] hover:text-[#4A7DFF] text-slate-700 dark:text-white rounded-md text-xs font-medium transition-all active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+                        className="flex-1 px-3 py-2.5 bg-white dark:bg-[#1a1a26] border border-blue-300 dark:border-blue-700/80 text-blue-600 dark:text-blue-400 hover:bg-slate-50 dark:hover:bg-[#252530] rounded-md text-xs font-bold transition-all active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
                       >
-                        <CheckCircle2 size={14} />
+                        <CheckCircle2 size={14} className="text-blue-600 dark:text-blue-400" />
                         <span>Confirm</span>
                       </button>
 
                       <button
                         onClick={() => setAssignModalOrder(order)}
-                        className="flex-1 px-3 py-2.5 bg-gradient-to-r from-[#4A7DFF] to-[#6C5CE7] text-white rounded-md text-xs font-medium transition-all active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+                        className="flex-1 px-3 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-md text-xs font-bold shadow-xs transition-all active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
                       >
                         <Bike size={14} />
                         <span>Assign Rider</span>
@@ -558,7 +629,7 @@ export default function AdminOrdersPage() {
                   {isOut && (
                     <button
                       onClick={() => updateOrderStatus(order.id, "DELIVERED")}
-                      className="flex-1 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-xs font-medium transition-all active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+                      className="flex-1 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-xs font-bold shadow-xs transition-all active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
                     >
                        <CheckCircle2 size={14} />
                        <span>Mark Delivered</span>
@@ -572,7 +643,7 @@ export default function AdminOrdersPage() {
                           updateOrderStatus(order.id, "CANCELLED");
                         }
                       }}
-                      className="px-3 py-2.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-md text-[11px] font-medium transition-all active:scale-95 shrink-0 cursor-pointer"
+                      className="px-3 py-2.5 text-rose-600 dark:text-rose-400 hover:text-rose-700 bg-white dark:bg-[#1a1a26] border border-slate-200 dark:border-[#252530] hover:border-rose-300 dark:hover:border-rose-800 rounded-md text-[11px] font-bold transition-all active:scale-95 shrink-0 cursor-pointer shadow-xs"
                     >
                       Cancel
                     </button>
@@ -596,30 +667,30 @@ export default function AdminOrdersPage() {
           >
             <div className="flex items-start justify-between pb-4 border-b border-slate-200 dark:border-[#1e1e2a]">
               <div>
-                <h3 className="text-xl font-semibold text-slate-700 dark:text-white tracking-tight">
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
                   Dispatch Rider
                 </h3>
-                <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mt-1">
-                  Order #{assignModalOrder.order_number || assignModalOrder.id} • <span className="font-medium text-slate-700 dark:text-slate-300">₹{assignModalOrder.total_amount}</span>
+                <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 mt-1">
+                  Order <span className="text-blue-600 dark:text-blue-400 font-bold">#{assignModalOrder.order_number || assignModalOrder.id}</span> • <span className="font-extrabold text-emerald-600 dark:text-emerald-400">₹{assignModalOrder.total_amount}</span>
                 </p>
               </div>
               <button
                 onClick={() => setAssignModalOrder(null)}
-                className="w-8 h-8 flex items-center justify-center bg-slate-100 dark:bg-[#1a1a26] text-slate-600 hover:text-slate-700 dark:hover:text-white rounded-full transition-colors cursor-pointer"
+                className="w-8 h-8 flex items-center justify-center bg-slate-100 dark:bg-[#1a1a26] text-slate-600 hover:text-slate-900 dark:hover:text-white rounded-full transition-colors cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
             <div className="space-y-3">
-              <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-500 uppercase tracking-widest pl-1">
+              <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest pl-1">
                 Active Riders ({riders.length})
               </p>
 
               {riders.length === 0 ? (
-                <div className="p-8 text-center bg-slate-50 dark:bg-[#1a1a26]/50 rounded-xl border border-dashed border-slate-300 dark:border-[#252530]">
-                  <Bike className="w-8 h-8 text-slate-400 dark:text-slate-600 mx-auto mb-2" />
-                  <p className="text-xs font-medium text-slate-600">No riders available.</p>
+                <div className="p-8 text-center bg-slate-50 dark:bg-[#1a1a26]/50 rounded-xl border border-dashed border-slate-200 dark:border-[#252530]">
+                  <Bike className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+                  <p className="text-xs font-medium text-slate-600 dark:text-slate-400">No riders available.</p>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -628,10 +699,10 @@ export default function AdminOrdersPage() {
                       key={rider.id}
                       disabled={assigning}
                       onClick={() => handleAssignRider(rider.id)}
-                      className="w-full flex items-center justify-between p-3 bg-white dark:bg-[#111118] hover:bg-slate-50 dark:hover:bg-[#1a1a26] border border-slate-300 dark:border-[#252530] hover:border-[#4A7DFF] dark:hover:border-[#4A7DFF] rounded-xl transition-all group text-left cursor-pointer"
+                      className="w-full flex items-center justify-between p-3 bg-white dark:bg-[#111118] hover:bg-slate-50 dark:hover:bg-[#1a1a26] border border-slate-200 dark:border-[#252530] hover:border-slate-300 dark:hover:border-slate-700 rounded-xl transition-all group text-left cursor-pointer shadow-xs"
                     >
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-[#252530] text-slate-600 dark:text-slate-400 group-hover:bg-[#4A7DFF] group-hover:text-white flex items-center justify-center transition-colors overflow-hidden shrink-0">
+                      <div className="flex items-center gap-3.5">
+                        <div className="w-11 h-11 rounded-xl bg-slate-50 dark:bg-[#1a1a26] text-blue-600 dark:text-blue-400 flex items-center justify-center transition-colors overflow-hidden shrink-0 border border-slate-200 dark:border-[#2a2a35]">
                           {rider.avatar ? (
                             <img src={rider.avatar} alt="Rider" className="w-full h-full object-cover" />
                           ) : (
@@ -639,17 +710,17 @@ export default function AdminOrdersPage() {
                           )}
                         </div>
                         <div>
-                          <p className="text-sm font-semibold text-slate-700 dark:text-white tracking-tight">
+                          <p className="text-sm font-bold text-slate-900 dark:text-white tracking-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                             {rider.first_name || rider.username}
                           </p>
-                          <p className="text-[11px] font-mono text-slate-600 mt-0.5">
-                            {rider.phone_number}
+                          <p className="text-[11px] font-mono text-blue-600 dark:text-blue-400 font-semibold mt-0.5">
+                            {rider.phone_number || "No phone registered"}
                           </p>
                         </div>
                       </div>
 
-                      <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-[#252530] group-hover:bg-[#4A7DFF]/10 text-slate-400 group-hover:text-[#4A7DFF] flex items-center justify-center transition-colors">
-                        <ArrowRight size={16} />
+                      <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-[#252530] text-slate-400 group-hover:text-blue-600 flex items-center justify-center transition-colors">
+                        <ArrowRight size={15} />
                       </div>
                     </button>
                   ))}

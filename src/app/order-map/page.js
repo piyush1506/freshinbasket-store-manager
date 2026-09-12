@@ -16,8 +16,9 @@ import {
   ChevronRight,
   ShieldCheck,
   Building2,
+  Loader2,
 } from "lucide-react";
-import { getAccessToken } from "@/lib/auth";
+import { getAccessToken, authFetch } from "@/lib/auth";
 import { useAdmin } from "../layout";
 import toast from "react-hot-toast";
 
@@ -27,13 +28,17 @@ const BhilwaraOrderMap = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="h-[450px] w-full flex flex-col items-center justify-center rounded-2xl bg-gray-50 dark:bg-[#111118] border border-gray-200 dark:border-[#1e1e2a]">
-        <RefreshCw className="w-7 h-7 animate-spin text-blue-500 mb-2" />
-        <span className="text-xs font-medium text-gray-500 dark:text-zinc-500">Loading Bhilwara Map Intelligence...</span>
+      <div className="h-[450px] w-full flex flex-col items-center justify-center rounded-xl bg-gray-50 dark:bg-[#111118] border border-gray-200 dark:border-[#1e1e2a]">
+        <div className="w-12 h-12 rounded-xl bg-blue-500/10 dark:bg-blue-500/20 flex items-center justify-center mb-2">
+          <Loader2 className="w-6 h-6 animate-spin text-blue-600 dark:text-blue-400" />
+        </div>
+        <span className="text-xs font-semibold text-slate-500 dark:text-zinc-400">Loading Bhilwara Map Intelligence...</span>
       </div>
     ),
   }
 );
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 export default function OrderMapPage() {
   const { theme } = useAdmin();
@@ -46,20 +51,14 @@ export default function OrderMapPage() {
 
   const fetchOrders = useCallback(async (silent = false) => {
     if (!silent) setRefreshing(true);
-    const token = getAccessToken();
-    if (!token) return;
 
     try {
-      const res = await fetch(`${API_URL}/api/v1/orders/`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
+      const res = await authFetch(`${API_URL}/api/v1/orders/`);
 
       if (res.ok) {
         const data = await res.json();
-        setOrders(Array.isArray(data) ? data : []);
+        const list = Array.isArray(data) ? data : (data?.results || []);
+        setOrders(list);
         setLastRefreshed(
           new Date().toLocaleTimeString([], {
             hour: "2-digit",
@@ -67,10 +66,14 @@ export default function OrderMapPage() {
             second: "2-digit",
           })
         );
+      } else if (!silent) {
+        toast.error("Failed to load map order data");
       }
     } catch (err) {
       console.error("Order map fetch error:", err);
-      toast.error("Failed to load map order data");
+      if (!silent) {
+        toast.error("Failed to load map order data");
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -111,8 +114,7 @@ export default function OrderMapPage() {
             </span>
           </div>
           <h1
-            className="bg-gradient-to-r from-emerald-600 to-green-500 bg-clip-text text-transparent drop-shadow-sm text-2xl sm:text-3xl font-medium tracking-tight"
-            style={{ color: isDark ? "#fff" : "#1a1a2e" }}
+            className="bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-500 bg-clip-text text-transparent drop-shadow-sm text-2xl sm:text-3xl font-semibold tracking-tight"
           >
             Bhilwara Order Probability & Heatmap
           </h1>
@@ -153,7 +155,7 @@ export default function OrderMapPage() {
       {/* KEY GEO METRICS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div
-          className="p-5 rounded-2xl"
+          className="p-5 rounded-xl"
           style={{
             background: isDark ? "#111118" : "#fff",
             border: `1px solid ${isDark ? "#1e1e2a" : "#ECEDF1"}`,
@@ -179,13 +181,13 @@ export default function OrderMapPage() {
           <div className="text-2xl font-medium" style={{ color: isDark ? "#fff" : "#1a1a2e" }}>
             {totalOrders}
           </div>
-          <p className="text-[11px] mt-1 text-emerald-500 font-medium">
+          <p className="text-[11px] mt-1 text-blue-500 font-medium">
             GPS coordinates mapped directly
           </p>
         </div>
 
         <div
-          className="p-5 rounded-2xl"
+          className="p-5 rounded-xl"
           style={{
             background: isDark ? "#111118" : "#fff",
             border: `1px solid ${isDark ? "#1e1e2a" : "#ECEDF1"}`,
@@ -217,7 +219,7 @@ export default function OrderMapPage() {
         </div>
 
         <div
-          className="p-5 rounded-2xl"
+          className="p-5 rounded-xl"
           style={{
             background: isDark ? "#111118" : "#fff",
             border: `1px solid ${isDark ? "#1e1e2a" : "#ECEDF1"}`,
@@ -249,7 +251,7 @@ export default function OrderMapPage() {
         </div>
 
         <div
-          className="p-5 rounded-2xl"
+          className="p-5 rounded-xl"
           style={{
             background: isDark ? "#111118" : "#fff",
             border: `1px solid ${isDark ? "#1e1e2a" : "#ECEDF1"}`,
@@ -265,8 +267,8 @@ export default function OrderMapPage() {
             <div
               className="w-8 h-8 rounded-lg flex items-center justify-center"
               style={{
-                background: isDark ? "rgba(16,185,129,0.15)" : "#ECFDF5",
-                color: "#10B981",
+                background: isDark ? "rgba(74,125,255,0.15)" : "#EEF2FF",
+                color: "#4A7DFF",
               }}
             >
               <Compass size={16} />
@@ -275,7 +277,7 @@ export default function OrderMapPage() {
           <div className="text-2xl font-medium" style={{ color: isDark ? "#fff" : "#1a1a2e" }}>
             3.4 km
           </div>
-          <p className="text-[11px] mt-1 text-emerald-500 font-medium">
+          <p className="text-[11px] mt-1 text-blue-500 font-medium">
             Fast ~18 min SLA reach
           </p>
         </div>
@@ -291,7 +293,7 @@ export default function OrderMapPage() {
 
       {/* FOOTER EXPLANATION */}
       <div
-        className="p-5 rounded-2xl"
+        className="p-5 rounded-xl"
         style={{
           background: isDark ? "#111118" : "#fff",
           border: `1px solid ${isDark ? "#1e1e2a" : "#ECEDF1"}`,

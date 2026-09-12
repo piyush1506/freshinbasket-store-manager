@@ -29,19 +29,9 @@ export function RevenueTrendChart({ orders = [], isDark }) {
   const pointsRef = useRef([]);
   const daysRef = useRef([]);
 
-  // Compute 14-day revenue stats
+  // Compute 14-day revenue stats ending on today
   const { days, totalRev, avgDailyRev, topDayRev } = useMemo(() => {
-    let referenceDate = new Date();
-    if (orders && orders.length > 0) {
-      const validDates = orders
-        .filter((o) => o.created_at)
-        .map((o) => new Date(o.created_at).getTime())
-        .filter((t) => !isNaN(t));
-      if (validDates.length > 0) {
-        referenceDate = new Date(Math.max(...validDates));
-      }
-    }
-
+    const referenceDate = new Date();
     const calculatedDays = [];
     let sumTotal = 0;
     let maxDay = 0;
@@ -287,7 +277,7 @@ export function RevenueTrendChart({ orders = [], isDark }) {
 
   return (
     <div
-      className="p-5 sm:p-6 rounded-2xl border transition-all"
+      className="p-5 sm:p-6 rounded-xl border transition-all"
       style={{
         background: isDark ? "#111118" : "#fff",
         borderColor: isDark ? "#1e1e2a" : "#ECEDF1",
@@ -787,7 +777,7 @@ export function CategoryDistributionChart({ orders = [], products = [], categori
 
   return (
     <div
-      className="p-5 sm:p-6 rounded-2xl border transition-all flex flex-col justify-between relative"
+      className="p-5 sm:p-6 rounded-xl border transition-all flex flex-col justify-between relative"
       style={{
         background: isDark ? "#111118" : "#fff",
         borderColor: isDark ? "#1e1e2a" : "#ECEDF1",
@@ -942,7 +932,7 @@ export function CategoryDistributionChart({ orders = [], products = [], categori
       {/* ─── Drill-Down Modal / Drawer for Category Details ─── */}
       {selectedCategoryDetail && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200 dark:border-zinc-800 max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[85vh] flex flex-col">
+          <div className="bg-white dark:bg-zinc-900 rounded-xl border border-slate-200 dark:border-zinc-800 max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[85vh] flex flex-col">
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-2.5">
                 <span
@@ -1082,7 +1072,7 @@ export function HourlyDistributionChart({ orders = [], isDark }) {
 
   return (
     <div
-      className="p-5 sm:p-6 rounded-2xl border transition-all"
+      className="p-5 sm:p-6 rounded-xl border transition-all"
       style={{
         background: isDark ? "#111118" : "#fff",
         borderColor: isDark ? "#1e1e2a" : "#ECEDF1",
@@ -1183,7 +1173,7 @@ export function StockHealthGauge({ products = [], isDark }) {
 
   return (
     <div
-      className="p-5 sm:p-6 rounded-2xl border transition-all"
+      className="p-5 sm:p-6 rounded-xl border transition-all"
       style={{
         background: isDark ? "#111118" : "#fff",
         borderColor: isDark ? "#1e1e2a" : "#ECEDF1",
@@ -1202,10 +1192,10 @@ export function StockHealthGauge({ products = [], isDark }) {
           </h3>
         </div>
         <Link
-          href="/inventory"
+          href="/products"
           className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline"
         >
-          Manage Stock →
+          Manage Products →
         </Link>
       </div>
 
@@ -1213,7 +1203,7 @@ export function StockHealthGauge({ products = [], isDark }) {
       <div className="h-3 rounded-full overflow-hidden flex bg-slate-100 dark:bg-zinc-800 gap-0.5 p-0.5 mb-4">
         <div
           title={`Healthy Stock: ${inStock} items`}
-          className="h-full rounded-l-full bg-emerald-500 transition-all duration-500"
+          className="h-full rounded-l-full bg-green-800 transition-all duration-500"
           style={{ width: `${healthyPercent}%` }}
         />
         <div
@@ -1230,7 +1220,7 @@ export function StockHealthGauge({ products = [], isDark }) {
 
       {/* Breakdown Cards */}
       <div className="grid grid-cols-3 gap-2.5 text-xs">
-        <div className="p-2.5 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/50">
+        <div className="p-2.5 rounded-xl dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50">
           <span className="font-medium text-emerald-700 dark:text-emerald-300 block text-[11px]">
             In Stock
           </span>
@@ -1242,7 +1232,7 @@ export function StockHealthGauge({ products = [], isDark }) {
           </span>
         </div>
 
-        <div className="p-2.5 rounded-xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/50">
+        <div className="p-2.5 rounded-xl dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/50">
           <span className="font-medium text-amber-700 dark:text-amber-300 block text-[11px]">
             Low (≤10)
           </span>
@@ -1254,7 +1244,7 @@ export function StockHealthGauge({ products = [], isDark }) {
           </span>
         </div>
 
-        <div className="p-2.5 rounded-xl bg-red-50/70 dark:bg-red-950/30 border border-red-200/80 dark:border-red-800/50">
+        <div className="p-2.5 rounded-xl  dark:bg-red-950/30 border border-red-200/80 dark:border-red-800/50">
           <span className="font-medium text-red-700 dark:text-red-300 block text-[11px]">
             Out of Stock
           </span>

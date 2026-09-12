@@ -195,7 +195,7 @@ export default function AdminSlidesPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
+        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
       </div>
     );
   }
@@ -205,7 +205,7 @@ export default function AdminSlidesPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-emerald-600 to-teal-500 bg-clip-text text-transparent">
+          <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
             Hero & Promo Banners
           </h1>
           <p className="text-xs text-slate-500 dark:text-zinc-400 mt-1">
@@ -217,7 +217,7 @@ export default function AdminSlidesPage() {
             resetForm();
             setShowForm(true);
           }}
-          className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all cursor-pointer"
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all cursor-pointer"
         >
           <Plus size={16} />
           <span>Add New Slide</span>
@@ -226,7 +226,7 @@ export default function AdminSlidesPage() {
 
       {/* Form */}
       {showForm && (
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200 dark:border-zinc-800 p-5 sm:p-6 shadow-sm">
+        <div className="bg-white dark:bg-zinc-900 rounded-xl border border-slate-200 dark:border-zinc-800 p-5 sm:p-6 shadow-sm">
           <h2 className="text-sm font-bold text-slate-800 dark:text-zinc-100 mb-4">
             {editingId ? "Edit Slide" : "Create New Slide"}
           </h2>
@@ -240,7 +240,7 @@ export default function AdminSlidesPage() {
                   type="text"
                   value={form.title}
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  className="w-full px-3.5 py-2 text-xs border border-slate-200 dark:border-zinc-800 rounded-xl bg-slate-50 dark:bg-zinc-800/50 text-slate-800 dark:text-zinc-100 focus:ring-2 focus:ring-emerald-500 outline-none"
+                  className="w-full px-3.5 py-2 text-xs border border-slate-200 dark:border-zinc-800 rounded-xl bg-slate-50 dark:bg-zinc-800/50 text-slate-800 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 outline-none"
                   placeholder="e.g. Fresh Farm Vegetables"
                 />
               </div>
@@ -252,7 +252,7 @@ export default function AdminSlidesPage() {
                   value={form.subtitle}
                   onChange={(e) => setForm({ ...form, subtitle: e.target.value })}
                   rows={3}
-                  className="w-full px-3.5 py-2 text-xs border border-slate-200 dark:border-zinc-800 rounded-xl bg-slate-50 dark:bg-zinc-800/50 text-slate-800 dark:text-zinc-100 focus:ring-2 focus:ring-emerald-500 outline-none resize-none"
+                  className="w-full px-3.5 py-2 text-xs border border-slate-200 dark:border-zinc-800 rounded-xl bg-slate-50 dark:bg-zinc-800/50 text-slate-800 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 outline-none resize-none"
                   placeholder="e.g. Up to 40% OFF on daily essentials"
                 />
               </div>
@@ -264,7 +264,7 @@ export default function AdminSlidesPage() {
                   type="text"
                   value={form.tag}
                   onChange={(e) => setForm({ ...form, tag: e.target.value })}
-                  className="w-full px-3.5 py-2 text-xs border border-slate-200 dark:border-zinc-800 rounded-xl bg-slate-50 dark:bg-zinc-800/50 text-slate-800 dark:text-zinc-100 focus:ring-2 focus:ring-emerald-500 outline-none"
+                  className="w-full px-3.5 py-2 text-xs border border-slate-200 dark:border-zinc-800 rounded-xl bg-slate-50 dark:bg-zinc-800/50 text-slate-800 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 outline-none"
                   placeholder="Organic"
                 />
               </div>
@@ -277,7 +277,7 @@ export default function AdminSlidesPage() {
                     type="text"
                     value={form.button_text}
                     onChange={(e) => setForm({ ...form, button_text: e.target.value })}
-                    className="w-full px-3.5 py-2 text-xs border border-slate-200 dark:border-zinc-800 rounded-xl bg-slate-50 dark:bg-zinc-800/50 text-slate-800 dark:text-zinc-100 focus:ring-2 focus:ring-emerald-500 outline-none"
+                    className="w-full px-3.5 py-2 text-xs border border-slate-200 dark:border-zinc-800 rounded-xl bg-slate-50 dark:bg-zinc-800/50 text-slate-800 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 outline-none"
                     placeholder="Shop Now"
                   />
                 </div>
@@ -289,7 +289,7 @@ export default function AdminSlidesPage() {
                     type="text"
                     value={form.link}
                     onChange={(e) => setForm({ ...form, link: e.target.value })}
-                    className="w-full px-3.5 py-2 text-xs border border-slate-200 dark:border-zinc-800 rounded-xl bg-slate-50 dark:bg-zinc-800/50 text-slate-800 dark:text-zinc-100 focus:ring-2 focus:ring-emerald-500 outline-none"
+                    className="w-full px-3.5 py-2 text-xs border border-slate-200 dark:border-zinc-800 rounded-xl bg-slate-50 dark:bg-zinc-800/50 text-slate-800 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 outline-none"
                     placeholder="/category/vegetables"
                   />
                 </div>
@@ -306,7 +306,7 @@ export default function AdminSlidesPage() {
                     type="text"
                     value={form.button_text_two}
                     onChange={(e) => setForm({ ...form, button_text_two: e.target.value })}
-                    className="w-full px-3.5 py-2 text-xs border border-slate-200 dark:border-zinc-800 rounded-xl bg-slate-50 dark:bg-zinc-800/50 text-slate-800 dark:text-zinc-100 focus:ring-2 focus:ring-emerald-500 outline-none"
+                    className="w-full px-3.5 py-2 text-xs border border-slate-200 dark:border-zinc-800 rounded-xl bg-slate-50 dark:bg-zinc-800/50 text-slate-800 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 outline-none"
                     placeholder="View Offers"
                   />
                 </div>
@@ -318,7 +318,7 @@ export default function AdminSlidesPage() {
                     type="text"
                     value={form.link_two}
                     onChange={(e) => setForm({ ...form, link_two: e.target.value })}
-                    className="w-full px-3.5 py-2 text-xs border border-slate-200 dark:border-zinc-800 rounded-xl bg-slate-50 dark:bg-zinc-800/50 text-slate-800 dark:text-zinc-100 focus:ring-2 focus:ring-emerald-500 outline-none"
+                    className="w-full px-3.5 py-2 text-xs border border-slate-200 dark:border-zinc-800 rounded-xl bg-slate-50 dark:bg-zinc-800/50 text-slate-800 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 outline-none"
                     placeholder="/offers"
                   />
                 </div>
@@ -333,7 +333,7 @@ export default function AdminSlidesPage() {
                     type="number"
                     value={form.order}
                     onChange={(e) => setForm({ ...form, order: parseInt(e.target.value) || 0 })}
-                    className="w-24 px-3.5 py-2 text-xs border border-slate-200 dark:border-zinc-800 rounded-xl bg-slate-50 dark:bg-zinc-800/50 text-slate-800 dark:text-zinc-100 focus:ring-2 focus:ring-emerald-500 outline-none"
+                    className="w-24 px-3.5 py-2 text-xs border border-slate-200 dark:border-zinc-800 rounded-xl bg-slate-50 dark:bg-zinc-800/50 text-slate-800 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 outline-none"
                     min="0"
                   />
                 </div>
@@ -343,7 +343,7 @@ export default function AdminSlidesPage() {
                       type="checkbox"
                       checked={form.is_active}
                       onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
-                      className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
+                      className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
                     />
                     <span className="text-xs font-semibold text-slate-700 dark:text-zinc-300">
                       Active on storefront
@@ -363,7 +363,7 @@ export default function AdminSlidesPage() {
                     setForm({ ...form, image_url: e.target.value, imageFile: null });
                     setPreview(e.target.value);
                   }}
-                  className="w-full px-3.5 py-2 text-xs border border-slate-200 dark:border-zinc-800 rounded-xl bg-slate-50 dark:bg-zinc-800/50 text-slate-800 dark:text-zinc-100 focus:ring-2 focus:ring-emerald-500 outline-none mb-2"
+                  className="w-full px-3.5 py-2 text-xs border border-slate-200 dark:border-zinc-800 rounded-xl bg-slate-50 dark:bg-zinc-800/50 text-slate-800 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 outline-none mb-2"
                   placeholder="https://..."
                 />
                 <label className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 rounded-lg text-xs font-semibold text-slate-700 dark:text-zinc-200 cursor-pointer transition-colors">
@@ -396,7 +396,7 @@ export default function AdminSlidesPage() {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="flex items-center gap-2 px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all disabled:opacity-50 cursor-pointer"
+              className="flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all disabled:opacity-50 cursor-pointer"
             >
               {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
               {editingId ? "Update Slide" : "Create Slide"}
@@ -412,7 +412,7 @@ export default function AdminSlidesPage() {
       )}
 
       {/* Slides List */}
-      <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200 dark:border-zinc-800 overflow-hidden shadow-sm">
+      <div className="bg-white dark:bg-zinc-900 rounded-xl border border-slate-200 dark:border-zinc-800 overflow-hidden shadow-sm">
         {slides.length === 0 ? (
           <div className="p-12 text-center">
             <ImageIcon size={40} className="mx-auto text-slate-400 dark:text-zinc-600 mb-3" />
@@ -460,7 +460,7 @@ export default function AdminSlidesPage() {
                     onClick={() => toggleActive(slide)}
                     className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
                       slide.is_active
-                        ? "text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                        ? "text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30"
                         : "text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-800"
                     }`}
                     title={slide.is_active ? "Active" : "Inactive"}

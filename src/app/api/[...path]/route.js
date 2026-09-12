@@ -1,6 +1,9 @@
 // ─── API Proxy Route Handler ───
 // Proxies all /api/* requests to the production or local backend, avoiding CORS issues.
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 const BACKEND_ORIGIN = process.env.BACKEND_ORIGIN || process.env.NEXT_PUBLIC_API_URL || 'https://freshinbasket.com';
 
 export async function GET(request, context) {
@@ -24,15 +27,17 @@ export async function DELETE(request, context) {
 }
 
 async function proxyRequest(request, context) {
-  const params = await context.params;
+  const params = await context?.params;
   const path = params?.path;
-  const segments = Array.isArray(path) ? path.join('/') : (path || '');
+  const rawSegments = Array.isArray(path) ? path.join('/') : (path || '');
+  const cleanSegments = rawSegments.replace(/^\/+|\/+$/g, '');
 
-  // Build the target URL, preserving trailing slash and query string
+  // Build the target URL cleanly, ensuring standard Django trailing slash
   const url = new URL(request.url);
   const cleanOrigin = BACKEND_ORIGIN.replace(/\/+$/, '');
-  const hasTrailingSlash = url.pathname.endsWith('/') || !segments.includes('.');
-  const targetUrl = `${cleanOrigin}/api/${segments}${hasTrailingSlash ? '/' : ''}${url.search}`;
+  const isFile = cleanSegments.split('/').pop()?.includes('.') || false;
+  const trailingSlash = isFile ? '' : '/';
+  const targetUrl = `${cleanOrigin}/api/${cleanSegments}${trailingSlash}${url.search}`;
 
   // Forward headers but strip host (the backend needs its own host header)
   const headers = new Headers(request.headers);
@@ -42,17 +47,25 @@ async function proxyRequest(request, context) {
   const init = {
     method: request.method,
     headers,
+    cache: 'no-store',
   };
 
-  // Forward body for non-GET/HEAD requests
+  // Forward body for non-GET/HEAD requests only when present
   if (request.method !== 'GET' && request.method !== 'HEAD') {
     const contentType = request.headers.get('content-type') || '';
     if (contentType.includes('multipart/form-data')) {
-      init.body = await request.arrayBuffer();
+      const buffer = await request.arrayBuffer();
+      if (buffer.byteLength > 0) {
+        init.body = buffer;
+        init.duplex = 'half';
+      }
     } else {
-      init.body = await request.text();
+      const text = await request.text();
+      if (text && text.length > 0) {
+        init.body = text;
+        init.duplex = 'half';
+      }
     }
-    init.duplex = 'half';
   }
 
   try {
