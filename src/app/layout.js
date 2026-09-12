@@ -3,7 +3,7 @@
 import { useState, useEffect, createContext, useContext } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import { Toaster } from "react-hot-toast";
+import { Toaster, toast } from "react-hot-toast";
 import {
   LayoutDashboard,
   ShoppingBag,
@@ -44,35 +44,66 @@ export function useAdmin() {
   return useContext(AdminContext);
 }
 
-// Pleasant chime using Web Audio API
+// High-volume, piercing merchant order alert using Web Audio API + Dynamic Compressor
 function playNotificationChime() {
   try {
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
     if (!AudioCtx) return;
     const ctx = new AudioCtx();
 
-    // High urgency multi-tone audio alert sequence
-    const tones = [
-      { freq: 880, start: 0, duration: 0.12 },
-      { freq: 1320, start: 0.15, duration: 0.12 },
-      { freq: 1760, start: 0.30, duration: 0.25 },
-      // Second burst
-      { freq: 880, start: 0.65, duration: 0.12 },
-      { freq: 1320, start: 0.80, duration: 0.12 },
-      { freq: 1760, start: 0.95, duration: 0.35 },
+    if (ctx.state === "suspended") {
+      ctx.resume();
+    }
+
+    // Dynamics Compressor to boost perceived loudness and clarity
+    const compressor = ctx.createDynamicsCompressor();
+    compressor.threshold.setValueAtTime(-24, ctx.currentTime);
+    compressor.knee.setValueAtTime(30, ctx.currentTime);
+    compressor.ratio.setValueAtTime(12, ctx.currentTime);
+    compressor.attack.setValueAtTime(0.003, ctx.currentTime);
+    compressor.release.setValueAtTime(0.25, ctx.currentTime);
+    compressor.connect(ctx.destination);
+
+    // Master Gain for maximum volume
+    const masterGain = ctx.createGain();
+    masterGain.gain.setValueAtTime(1.8, ctx.currentTime);
+    masterGain.connect(compressor);
+
+    // High-pitch dual-tone burst sequence (Piercing Merchant Bell pattern)
+    const pulses = [
+      { f1: 880, f2: 1760, start: 0.00, dur: 0.16 },
+      { f1: 1175, f2: 2350, start: 0.18, dur: 0.16 },
+      { f1: 1568, f2: 3136, start: 0.36, dur: 0.30 },
+
+      { f1: 880, f2: 1760, start: 0.75, dur: 0.16 },
+      { f1: 1175, f2: 2350, start: 0.93, dur: 0.16 },
+      { f1: 1568, f2: 3136, start: 1.11, dur: 0.45 },
     ];
 
-    tones.forEach(({ freq, start, duration }) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(freq, ctx.currentTime + start);
-      gain.gain.setValueAtTime(0.8, ctx.currentTime + start);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + start + duration);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(ctx.currentTime + start);
-      osc.stop(ctx.currentTime + start + duration);
+    pulses.forEach(({ f1, f2, start, dur }) => {
+      // Primary Oscillator (Triangle wave for rich volume penetration)
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = "triangle";
+      osc1.frequency.setValueAtTime(f1, ctx.currentTime + start);
+      gain1.gain.setValueAtTime(1.0, ctx.currentTime + start);
+      gain1.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + start + dur);
+      osc1.connect(gain1);
+      gain1.connect(masterGain);
+      osc1.start(ctx.currentTime + start);
+      osc1.stop(ctx.currentTime + start + dur);
+
+      // Harmonic Oscillator (Sine wave for bell resonance)
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = "sine";
+      osc2.frequency.setValueAtTime(f2, ctx.currentTime + start);
+      gain2.gain.setValueAtTime(0.7, ctx.currentTime + start);
+      gain2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + start + dur);
+      osc2.connect(gain2);
+      gain2.connect(masterGain);
+      osc2.start(ctx.currentTime + start);
+      osc2.stop(ctx.currentTime + start + dur);
     });
   } catch (e) {
     console.log("Audio notification failed or blocked:", e);
@@ -86,8 +117,48 @@ export default function RootLayout({ children }) {
   const [user, setUserState] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [showSoundPrompt, setShowSoundPrompt] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [theme, setTheme] = useState("light");
+
+  // Register PWA Service Worker
+  useEffect(() => {
+    if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker
+          .register("/sw.js")
+          .then((reg) => console.log("PWA Service Worker registered:", reg.scope))
+          .catch((err) => console.log("PWA Service Worker registration error:", err));
+      });
+    }
+  }, []);
+
+  // Check Sound Permission on site open
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      // Check if user has already granted audio permission
+      const hasPermission = localStorage.getItem("fib_audio_permission_granted");
+      if (hasPermission !== "true" && pathname !== "/login") {
+        // Pop up audio permission prompt immediately upon site visit
+        const timer = setTimeout(() => {
+          setShowSoundPrompt(true);
+        }, 500);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [pathname]);
+
+  const enableSoundPermission = () => {
+    setSoundEnabled(true);
+    setShowSoundPrompt(false);
+    localStorage.setItem("fib_audio_permission_granted", "true");
+    localStorage.setItem("admin_sound_enabled", "true");
+    playNotificationChime();
+    toast.success("Audio Permission Granted! Loud order alerts are active.", {
+      icon: "🔊",
+      duration: 4000,
+    });
+  };
 
   // Load and apply theme preference
   useEffect(() => {
@@ -154,6 +225,12 @@ export default function RootLayout({ children }) {
         <head>
           <title>FreshInBasket Admin | Authentication</title>
           <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+          <link rel="manifest" href="/manifest.json" />
+          <meta name="theme-color" content="#2563eb" />
+          <meta name="mobile-web-app-capable" content="yes" />
+          <meta name="apple-mobile-web-app-capable" content="yes" />
+          <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+          <meta name="apple-mobile-web-app-title" content="FreshInBasket" />
           <link rel="icon" href="/favicon.ico" sizes="any" />
           <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
           <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -173,6 +250,12 @@ export default function RootLayout({ children }) {
       <head>
         <title>FreshInBasket Admin Console</title>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#2563eb" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="FreshInBasket" />
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -276,28 +359,27 @@ export default function RootLayout({ children }) {
                     {isDark ? <Sun size={16} /> : <Moon size={16} />}
                   </button>
 
-                  {/* Sound Toggle */}
+                  {/* Sound Toggle Icon Button */}
                   <button
                     onClick={() => {
                       const next = !soundEnabled;
                       setSoundEnabled(next);
-                      if (next) playNotificationChime();
+                      if (next) {
+                        playNotificationChime();
+                        toast.success("Sound alerts enabled", { icon: "🔊" });
+                      } else {
+                        toast("Sound alerts muted", { icon: "🔇" });
+                      }
                     }}
-                    title={soundEnabled ? "Sound Alerts Active" : "Sound Muted"}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold admin-nav-item cursor-pointer"
+                    title={soundEnabled ? "Sound Alerts Active (Click to mute)" : "Sound Alerts Muted (Click to enable)"}
+                    className="p-2 rounded-xl admin-nav-item cursor-pointer transition-colors"
                     style={{
-                      background: soundEnabled
-                        ? "#4A7DFF"
-                        : isDark
-                          ? "#1a1a26"
-                          : "#F0F1F5",
-                      color: soundEnabled ? "#fff" : isDark ? "#666" : "#8C8FA7",
+                      background: isDark ? "#1a1a26" : "#F0F1F5",
+                      color: soundEnabled ? (isDark ? "#60a5fa" : "#2563eb") : (isDark ? "#888" : "#8C8FA7"),
                     }}
+                    aria-label="Toggle sound alerts"
                   >
-                    {soundEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />}
-                    <span className="hidden sm:inline">
-                      {soundEnabled ? "Sound" : "Muted"}
-                    </span>
+                    {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
                   </button>
 
                   {/* Orders Bell */}
@@ -697,6 +779,43 @@ export default function RootLayout({ children }) {
                   <span className="text-[10px] tracking-tight">More</span>
                 </button>
               </nav>
+            </div>
+          )}
+
+          {/* SOUND PERMISSION PROMPT MODAL (Allows browser autoplay for order alerts) */}
+          {showSoundPrompt && (
+            <div className="fixed inset-0 z-50 bg-slate-900/50 dark:bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+              <div className="bg-white dark:bg-[#111118] border border-slate-200 dark:border-[#252530] rounded-2xl p-6 sm:p-7 max-w-sm w-full shadow-2xl space-y-4 text-center">
+                <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto border border-blue-200 dark:border-blue-900/60 shadow-xs">
+                  <Volume2 className="w-7 h-7 animate-pulse" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                    Enable Order Audio Alerts
+                  </h3>
+                  <p className="text-xs font-medium text-slate-500 dark:text-zinc-400 mt-1.5 leading-relaxed">
+                    FreshInBasket needs audio permissions so you get instant loud sound alerts when a customer places a live order.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-2 pt-2">
+                  <button
+                    onClick={enableSoundPermission}
+                    className="w-full py-2.5 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-md transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <Volume2 size={16} />
+                    <span>Enable Sound Alerts</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowSoundPrompt(false);
+                      sessionStorage.setItem("fib_sound_prompted", "true");
+                    }}
+                    className="w-full py-2 text-xs font-semibold text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-white transition-colors cursor-pointer"
+                  >
+                    Mute for Now
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </AdminContext.Provider>
