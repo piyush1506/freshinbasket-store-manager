@@ -27,7 +27,7 @@ import {
   Loader2,
   CheckCircle2,
 } from "lucide-react";
-import { getAccessToken, getUser, clearAuth } from "@/lib/auth";
+import { getAccessToken, getUser, clearAuth, authFetch } from "@/lib/auth";
 import "./globals.css";
 
 // Context for global admin state (sound, active counts, theme, incoming order alarms)
@@ -48,70 +48,169 @@ export function useAdmin() {
   return useContext(AdminContext);
 }
 
-// High-volume, piercing merchant order alert using Web Audio API + Dynamic Compressor
-function playNotificationChime() {
-  try {
-    const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = new AudioCtx();
+// Singleton audio context & cached WAV audio for maximum browser compatibility
+let sharedAudioCtx = null;
+let cachedWavUrl = null;
 
-    if (ctx.state === "suspended") {
-      ctx.resume();
+function getOrCreateAudioContext() {
+  if (typeof window === "undefined") return null;
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  if (!AudioCtx) return null;
+  if (!sharedAudioCtx || sharedAudioCtx.state === "closed") {
+    sharedAudioCtx = new AudioCtx();
+  }
+  if (sharedAudioCtx.state === "suspended") {
+    sharedAudioCtx.resume().catch(() => {});
+  }
+  return sharedAudioCtx;
+}
+
+// Generate fallback loud chime WAV Blob URL
+function getChimeWavUrl() {
+  if (cachedWavUrl) return cachedWavUrl;
+  try {
+    const sampleRate = 22050;
+    const duration = 1.2;
+    const numSamples = Math.floor(sampleRate * duration);
+    const buffer = new ArrayBuffer(44 + numSamples * 2);
+    const view = new DataView(buffer);
+
+    function writeString(offset, string) {
+      for (let i = 0; i < string.length; i++) {
+        view.setUint8(offset + i, string.charCodeAt(i));
+      }
     }
 
-    // Dynamics Compressor to boost perceived loudness and clarity
-    const compressor = ctx.createDynamicsCompressor();
-    compressor.threshold.setValueAtTime(-24, ctx.currentTime);
-    compressor.knee.setValueAtTime(30, ctx.currentTime);
-    compressor.ratio.setValueAtTime(12, ctx.currentTime);
-    compressor.attack.setValueAtTime(0.003, ctx.currentTime);
-    compressor.release.setValueAtTime(0.25, ctx.currentTime);
-    compressor.connect(ctx.destination);
+    writeString(0, "RIFF");
+    view.setUint32(4, 36 + numSamples * 2, true);
+    writeString(8, "WAVE");
+    writeString(12, "fmt ");
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true); // PCM
+    view.setUint16(22, 1, true); // Mono
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 2, true);
+    view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true);
+    writeString(36, "data");
+    view.setUint32(40, numSamples * 2, true);
 
-    // Master Gain for maximum volume
-    const masterGain = ctx.createGain();
-    masterGain.gain.setValueAtTime(1.8, ctx.currentTime);
-    masterGain.connect(compressor);
+    for (let i = 0; i < numSamples; i++) {
+      const t = i / sampleRate;
+      let sample = 0;
+      // Tone 1: 0 to 0.35s (880Hz + harmonic)
+      if (t < 0.35) {
+        const env = Math.exp(-t * 8);
+        sample += Math.sin(2 * Math.PI * 880 * t) * 0.7 * env;
+        sample += Math.sin(2 * Math.PI * 1760 * t) * 0.35 * env;
+      }
+      // Tone 2: 0.18 to 0.65s (1175Hz + harmonic)
+      if (t >= 0.18 && t < 0.65) {
+        const t2 = t - 0.18;
+        const env = Math.exp(-t2 * 8);
+        sample += Math.sin(2 * Math.PI * 1175 * t2) * 0.8 * env;
+        sample += Math.sin(2 * Math.PI * 2350 * t2) * 0.4 * env;
+      }
+      // Tone 3: 0.36 to 1.2s (1568Hz + harmonic)
+      if (t >= 0.36) {
+        const t3 = t - 0.36;
+        const env = Math.exp(-t3 * 5);
+        sample += Math.sin(2 * Math.PI * 1568 * t3) * 0.9 * env;
+        sample += Math.sin(2 * Math.PI * 3136 * t3) * 0.45 * env;
+      }
 
-    // High-pitch dual-tone burst sequence (Piercing Merchant Bell pattern)
-    const pulses = [
-      { f1: 880, f2: 1760, start: 0.00, dur: 0.16 },
-      { f1: 1175, f2: 2350, start: 0.18, dur: 0.16 },
-      { f1: 1568, f2: 3136, start: 0.36, dur: 0.30 },
+      const clamped = Math.max(-1, Math.min(1, sample));
+      view.setInt16(44 + i * 2, clamped < 0 ? clamped * 0x8000 : clamped * 0x7fff, true);
+    }
 
-      { f1: 880, f2: 1760, start: 0.75, dur: 0.16 },
-      { f1: 1175, f2: 2350, start: 0.93, dur: 0.16 },
-      { f1: 1568, f2: 3136, start: 1.11, dur: 0.45 },
-    ];
+    const blob = new Blob([buffer], { type: "audio/wav" });
+    cachedWavUrl = URL.createObjectURL(blob);
+    return cachedWavUrl;
+  } catch (err) {
+    console.error("WAV generation error:", err);
+    return null;
+  }
+}
 
-    pulses.forEach(({ f1, f2, start, dur }) => {
-      // Primary Oscillator (Triangle wave for rich volume penetration)
-      const osc1 = ctx.createOscillator();
-      const gain1 = ctx.createGain();
-      osc1.type = "triangle";
-      osc1.frequency.setValueAtTime(f1, ctx.currentTime + start);
-      gain1.gain.setValueAtTime(1.0, ctx.currentTime + start);
-      gain1.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + start + dur);
-      osc1.connect(gain1);
-      gain1.connect(masterGain);
-      osc1.start(ctx.currentTime + start);
-      osc1.stop(ctx.currentTime + start + dur);
+// Piercing merchant order alert using Web Audio API + HTML5 Audio fallback
+function playNotificationChime() {
+  let playedWebAudio = false;
 
-      // Harmonic Oscillator (Sine wave for bell resonance)
-      const osc2 = ctx.createOscillator();
-      const gain2 = ctx.createGain();
-      osc2.type = "sine";
-      osc2.frequency.setValueAtTime(f2, ctx.currentTime + start);
-      gain2.gain.setValueAtTime(0.7, ctx.currentTime + start);
-      gain2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + start + dur);
-      osc2.connect(gain2);
-      gain2.connect(masterGain);
-      osc2.start(ctx.currentTime + start);
-      osc2.stop(ctx.currentTime + start + dur);
-    });
+  // 1. Try Web Audio API
+  try {
+    const ctx = getOrCreateAudioContext();
+    if (ctx) {
+      if (ctx.state === "suspended") {
+        ctx.resume().catch(() => {});
+      }
+
+      const compressor = ctx.createDynamicsCompressor();
+      compressor.threshold.setValueAtTime(-24, ctx.currentTime);
+      compressor.knee.setValueAtTime(30, ctx.currentTime);
+      compressor.ratio.setValueAtTime(12, ctx.currentTime);
+      compressor.attack.setValueAtTime(0.003, ctx.currentTime);
+      compressor.release.setValueAtTime(0.25, ctx.currentTime);
+      compressor.connect(ctx.destination);
+
+      const masterGain = ctx.createGain();
+      masterGain.gain.setValueAtTime(2.0, ctx.currentTime);
+      masterGain.connect(compressor);
+
+      const pulses = [
+        { f1: 880, f2: 1760, start: 0.00, dur: 0.16 },
+        { f1: 1175, f2: 2350, start: 0.18, dur: 0.16 },
+        { f1: 1568, f2: 3136, start: 0.36, dur: 0.30 },
+        { f1: 880, f2: 1760, start: 0.75, dur: 0.16 },
+        { f1: 1175, f2: 2350, start: 0.93, dur: 0.16 },
+        { f1: 1568, f2: 3136, start: 1.11, dur: 0.45 },
+      ];
+
+      pulses.forEach(({ f1, f2, start, dur }) => {
+        const osc1 = ctx.createOscillator();
+        const gain1 = ctx.createGain();
+        osc1.type = "triangle";
+        osc1.frequency.setValueAtTime(f1, ctx.currentTime + start);
+        gain1.gain.setValueAtTime(1.0, ctx.currentTime + start);
+        gain1.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + start + dur);
+        osc1.connect(gain1);
+        gain1.connect(masterGain);
+        osc1.start(ctx.currentTime + start);
+        osc1.stop(ctx.currentTime + start + dur);
+
+        const osc2 = ctx.createOscillator();
+        const gain2 = ctx.createGain();
+        osc2.type = "sine";
+        osc2.frequency.setValueAtTime(f2, ctx.currentTime + start);
+        gain2.gain.setValueAtTime(0.7, ctx.currentTime + start);
+        gain2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + start + dur);
+        osc2.connect(gain2);
+        gain2.connect(masterGain);
+        osc2.start(ctx.currentTime + start);
+        osc2.stop(ctx.currentTime + start + dur);
+      });
+
+      playedWebAudio = true;
+    }
   } catch (e) {
     console.log("Audio notification failed or blocked:", e);
   }
+
+  // 2. HTML5 Audio element fallback
+  try {
+    const wavUrl = getChimeWavUrl();
+    if (wavUrl) {
+      const audio = new Audio(wavUrl);
+      audio.volume = 1.0;
+      audio.play().catch(() => {});
+    }
+  } catch (e) {}
+
+  // 3. Mobile haptic vibration
+  try {
+    if (typeof window !== "undefined" && "navigator" in window && navigator.vibrate) {
+      navigator.vibrate([300, 100, 300, 100, 500]);
+    }
+  } catch {}
 }
 
 export default function RootLayout({ children }) {
@@ -142,9 +241,22 @@ export default function RootLayout({ children }) {
   // Trigger continuous looping chime & incoming order modal
   const triggerIncomingOrderAlert = useCallback((orderData) => {
     setActiveIncomingOrder(orderData || { id: "LIVE", order_number: "LIVE ORDER" });
-    
+
     // Play first ring immediately
     playNotificationChime();
+
+    // Trigger Desktop Browser Notification if permitted
+    try {
+      if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+        const orderNum = orderData?.order_number || `#${orderData?.id || "NEW"}`;
+        const amt = orderData?.total_amount ? `₹${parseFloat(orderData.total_amount).toFixed(0)}` : "";
+        new Notification("🚨 FreshInBasket: New Order Received!", {
+          body: `Order ${orderNum} ${amt} received! Click to open admin dispatch.`,
+          icon: "/favicon.ico",
+          tag: "fib-new-order",
+        });
+      }
+    } catch {}
 
     // Clear previous timer
     if (alarmIntervalRef.current) {
@@ -170,21 +282,40 @@ export default function RootLayout({ children }) {
     };
   }, [stopAlarmLoop]);
 
-  // Register PWA Service Worker
+  // Register PWA Service Worker & auto unlock audio on user gesture
   useEffect(() => {
-    if (typeof window !== "undefined" && "serviceWorker" in navigator) {
-      window.addEventListener("load", () => {
-        navigator.serviceWorker
-          .register("/sw.js")
-          .then((reg) => console.log("PWA Service Worker registered:", reg.scope))
-          .catch((err) => console.log("PWA Service Worker registration error:", err));
-      });
+    if (typeof window !== "undefined") {
+      const unlock = () => {
+        getOrCreateAudioContext();
+      };
+      window.addEventListener("click", unlock, { passive: true });
+      window.addEventListener("touchstart", unlock, { passive: true });
+      window.addEventListener("keydown", unlock, { passive: true });
+
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker
+            .register("/sw.js")
+            .then((reg) => console.log("PWA Service Worker registered:", reg.scope))
+            .catch((err) => console.log("PWA Service Worker registration error:", err));
+        });
+      }
+
+      return () => {
+        window.removeEventListener("click", unlock);
+        window.removeEventListener("touchstart", unlock);
+        window.removeEventListener("keydown", unlock);
+      };
     }
   }, []);
 
   // Check Sound Permission on site open
   useEffect(() => {
     if (typeof window !== "undefined") {
+      const savedSound = localStorage.getItem("admin_sound_enabled");
+      if (savedSound !== null) {
+        setSoundEnabled(savedSound === "true");
+      }
       const hasPermission = localStorage.getItem("fib_audio_permission_granted");
       if (hasPermission !== "true" && pathname !== "/login") {
         const timer = setTimeout(() => {
@@ -200,14 +331,21 @@ export default function RootLayout({ children }) {
     setShowSoundPrompt(false);
     localStorage.setItem("fib_audio_permission_granted", "true");
     localStorage.setItem("admin_sound_enabled", "true");
+    getOrCreateAudioContext();
     playNotificationChime();
-    toast.success("Audio Permission Granted! Loud order alerts are active.", {
+
+    // Request desktop browser notifications
+    if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission().catch(() => {});
+    }
+
+    toast.success("Audio Alerts Active! Loud order chime will play on new orders.", {
       icon: "🔊",
       duration: 4000,
     });
   };
 
-  // Background Live Order Poll across all admin pages
+  // Background Live Order Poll across all admin pages (Single source of truth)
   useEffect(() => {
     if (!authorized || pathname === "/login") return;
 
@@ -216,9 +354,7 @@ export default function RootLayout({ children }) {
       if (!token) return;
 
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/v1/orders/`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await authFetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/v1/orders/`);
 
         if (res.ok) {
           const data = await res.json();
@@ -244,7 +380,7 @@ export default function RootLayout({ children }) {
     };
 
     checkLiveOrders();
-    const interval = setInterval(checkLiveOrders, 10000);
+    const interval = setInterval(checkLiveOrders, 5000);
     return () => clearInterval(interval);
   }, [authorized, pathname, triggerIncomingOrderAlert]);
 

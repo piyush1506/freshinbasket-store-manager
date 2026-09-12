@@ -393,11 +393,6 @@ export default function AdminDashboardPage() {
             (o) => o.status === "PENDING" || o.status === "CONFIRMED"
           );
           setPendingCount(pending.length);
-
-          if (isSilent && newOrders.length > orders.length) {
-            playChime();
-            toast.success("New incoming order received!", { icon: "🔔" });
-          }
         }
 
         if (prodRes.ok) {
@@ -431,7 +426,7 @@ export default function AdminDashboardPage() {
         setRefreshing(false);
       }
     },
-    [orders.length, playChime, setPendingCount]
+    [setPendingCount]
   );
 
   useEffect(() => {

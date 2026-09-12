@@ -59,12 +59,6 @@ export default function AdminOrdersPage() {
 
         const pending = list.filter((o) => o.status === "PENDING" || o.status === "CONFIRMED");
         setPendingCount(pending.length);
-
-        if (isSilent && list.length > orders.length) {
-          const newOrder = list[0] || { id: "LIVE", order_number: "LIVE ORDER" };
-          triggerIncomingOrderAlert(newOrder);
-          toast.success("🚨 New Live Order Received!", { icon: "🔔" });
-        }
       }
 
       if (usersRes.ok) {
@@ -79,7 +73,7 @@ export default function AdminOrdersPage() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [orders.length, playChime, setPendingCount]);
+  }, [setPendingCount]);
 
   useEffect(() => {
     fetchOrders(false);
