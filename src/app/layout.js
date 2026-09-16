@@ -26,6 +26,7 @@ import {
   ClipboardList,
   Loader2,
   CheckCircle2,
+  FolderTree,
 } from "lucide-react";
 import { getAccessToken, getUser, clearAuth, authFetch } from "@/lib/auth";
 import "./globals.css";
@@ -436,6 +437,7 @@ export default function RootLayout({ children }) {
     { name: "Dashboard", href: "/", icon: LayoutDashboard },
     { name: "Live Orders", href: "/orders", icon: ShoppingBag, badge: pendingCount },
     { name: "Products", href: "/products", icon: Package },
+    { name: "Categories", href: "/categories", icon: FolderTree },
     { name: "Order Map", href: "/order-map", icon: MapPin },
     { name: "Delivery Boys", href: "/riders", icon: Bike },
     { name: "Delivery Assignments", href: "/deliveries", icon: ClipboardList },

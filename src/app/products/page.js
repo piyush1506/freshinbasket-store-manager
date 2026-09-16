@@ -205,7 +205,8 @@ export default function ProductPage() {
   const handleUpdateProduct = async (e) => {
     e.preventDefault();
     if (!editingProductData) return;
-    if (!editingProductData.name.trim()) {
+    const trimmedName = editingProductData.name.trim();
+    if (!trimmedName) {
       toast.error("Product name is required");
       return;
     }
@@ -213,13 +214,24 @@ export default function ProductPage() {
       toast.error("Please enter a valid price");
       return;
     }
+
+    // Duplicate Check Guard (exclude current product)
+    const normalizedName = trimmedName.toLowerCase().replace(/\s+/g, " ");
+    const duplicate = (products || []).find(
+      (p) => p.id !== editingProductData.id && (p.name || "").trim().toLowerCase().replace(/\s+/g, " ") === normalizedName
+    );
+    if (duplicate) {
+      toast.error(`Another product named "${duplicate.name}" already exists in your catalog (ID: #${duplicate.id}).`);
+      return;
+    }
+
     setUpdatingProduct(true);
     const slug = (editingProductData.slug || "").trim() || generateSlug(editingProductData.name, editingProductData.id);
     try {
       let res;
       if (editImageFile) {
         const formdata = new FormData();
-        formdata.append("name", editingProductData.name.trim());
+        formdata.append("name", trimmedName);
         formdata.append("slug", slug);
         formdata.append("price", String(editingProductData.price));
         if (editingProductData.mrp) {
@@ -229,7 +241,7 @@ export default function ProductPage() {
         formdata.append("order_step", String(editingProductData.order_step || "1"));
         formdata.append("min_order_qty", String(editingProductData.min_order_qty || "0"));
         formdata.append("tax_percentage", String(editingProductData.tax_percentage || "0"));
-        formdata.append("description", editingProductData.description || editingProductData.name.trim());
+        formdata.append("description", editingProductData.description || trimmedName);
         formdata.append("is_active", editingProductData.is_active ? "true" : "false");
         formdata.append("category_id", editingProductData.category_id || "");
         formdata.append("categories", editingProductData.category_id || "");
@@ -241,14 +253,14 @@ export default function ProductPage() {
         });
       } else {
         const payload = {
-          name: editingProductData.name.trim(),
+          name: trimmedName,
           slug: slug,
           price: parseFloat(editingProductData.price),
           stock: parseInt(editingProductData.stock, 10) || 0,
           order_step: parseFloat(editingProductData.order_step) || 1,
           min_order_qty: parseFloat(editingProductData.min_order_qty) || 0,
           tax_percentage: parseFloat(editingProductData.tax_percentage) || 0,
-          description: editingProductData.description || editingProductData.name.trim(),
+          description: editingProductData.description || trimmedName,
           is_active: Boolean(editingProductData.is_active),
           category_id: editingProductData.category_id ? parseInt(editingProductData.category_id, 10) : null,
           categories: editingProductData.category_id ? [parseInt(editingProductData.category_id, 10)] : [],
@@ -313,7 +325,8 @@ export default function ProductPage() {
   // Create Product
   const handleCreateProduct = async (e, addAnother = false) => {
     e.preventDefault();
-    if (!newProduct.name.trim()) {
+    const trimmedName = newProduct.name.trim();
+    if (!trimmedName) {
       toast.error("Product name is required");
       return;
     }
@@ -321,13 +334,24 @@ export default function ProductPage() {
       toast.error("Please enter a valid price");
       return;
     }
+
+    // Duplicate Check Guard
+    const normalizedName = trimmedName.toLowerCase().replace(/\s+/g, " ");
+    const duplicate = (products || []).find(
+      (p) => (p.name || "").trim().toLowerCase().replace(/\s+/g, " ") === normalizedName
+    );
+    if (duplicate) {
+      toast.error(`A product named "${duplicate.name}" already exists in your catalog (ID: #${duplicate.id}).`);
+      return;
+    }
+
     setSavingProduct(true);
     try {
       const slug = (newProduct.slug || "").trim() || generateSlug(newProduct.name);
       let res;
       if (imageFile) {
         const formdata = new FormData();
-        formdata.append("name", newProduct.name.trim());
+        formdata.append("name", trimmedName);
         formdata.append("slug", slug);
         formdata.append("price", String(newProduct.price));
         if (newProduct.mrp && parseFloat(newProduct.mrp) > 0) {
@@ -337,7 +361,7 @@ export default function ProductPage() {
         formdata.append("order_step", String(newProduct.order_step || "1"));
         formdata.append("min_order_qty", String(newProduct.min_order_qty || "0"));
         formdata.append("tax_percentage", String(newProduct.tax_percentage || "0"));
-        formdata.append("description", newProduct.description || newProduct.name.trim());
+        formdata.append("description", newProduct.description || trimmedName);
         formdata.append("is_active", newProduct.is_active ? "true" : "false");
 
         if (newProduct.category_id && newProduct.category_id !== "") {
@@ -351,14 +375,14 @@ export default function ProductPage() {
         });
       } else {
         const payload = {
-          name: newProduct.name.trim(),
+          name: trimmedName,
           slug: slug,
           price: parseFloat(newProduct.price),
           stock: parseInt(newProduct.stock, 10) || 100,
           order_step: parseFloat(newProduct.order_step) || 1,
           min_order_qty: parseFloat(newProduct.min_order_qty) || 0,
           tax_percentage: parseFloat(newProduct.tax_percentage) || 0,
-          description: newProduct.description || newProduct.name.trim(),
+          description: newProduct.description || trimmedName,
           is_active: Boolean(newProduct.is_active),
         };
         if (newProduct.mrp && parseFloat(newProduct.mrp) > 0) {
@@ -1180,6 +1204,22 @@ export default function ProductPage() {
                     }}
                     className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-zinc-800/80 border border-slate-200 dark:border-zinc-700 rounded-md text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                   />
+                  {
+                    (()=>{
+                      const norm = (newProduct.name || 
+                        "").trim().toLowerCase().replace(/\s+/g," ");
+                        if (!norm) return null;
+                        const match = products.find((p)=>(
+                          p.name || "").toLowerCase().trim() === norm);
+                          if(match){
+                            return (
+                              <p className="mt-1 text-[11px] font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1">
+          <span>⚠️ Warning: Product "{match.name}" already exists in catalog (ID: #{match.id})</span>
+        </p>
+                            )
+                          }
+                    })()
+                  }
                 </div>
 
                 <div>
