@@ -37,7 +37,14 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 function RiderAssignedOrdersList({ assignments = [], orders = [] }) {
   const scrollContainerRef = useRef(null);
-  const ongoing = assignments.filter((a) => !a.delivered_at);
+  const ongoing = assignments.filter((a) => {
+    if (a.delivered_at) return false;
+    const orderObj = typeof a.order === "object" ? a.order : orders.find((o) => o.id === a.order);
+    if (orderObj?.status === "CANCELLED" || orderObj?.status === "UNDELIVERED" || orderObj?.status === "DELIVERED") {
+      return false;
+    }
+    return true;
+  });
 
   const handleScroll = (direction) => {
     if (scrollContainerRef.current) {
@@ -484,6 +491,12 @@ export default function AdminRidersPage({ defaultTab }) {
 
     riderAssignments.forEach((a) => {
       const orderObj = typeof a.order === "object" ? a.order : orders.find((o) => o.id === a.order);
+      
+      // Skip completely cancelled or undelivered orders
+      if (orderObj?.status === "CANCELLED" || orderObj?.status === "UNDELIVERED") {
+        return;
+      }
+
       const amount = Number(orderObj?.total_amount || 0);
       const isCOD = orderObj?.payment_method === "COD" || !orderObj?.is_paid;
       const isDelivered = Boolean(a.delivered_at) || orderObj?.status === "DELIVERED";

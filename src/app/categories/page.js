@@ -71,23 +71,60 @@ export default function CategoriesPage() {
     return str || "cat-" + Date.now().toString(36);
   };
 
+  // Helper to safely parse JSON without throwing on HTML error pages
+  const safeJson = async (res) => {
+    if (!res || !res.ok) return null;
+    try {
+      return await res.json();
+    } catch (e) {
+      console.warn("JSON parse error:", e);
+      return null;
+    }
+  };
+
   // ─── Fetch Categories & Sections ───
   const fetchData = async () => {
     setRefreshing(true);
     try {
-      const [catRes, secRes] = await Promise.all([
-        authFetch(`${API_URL}/api/v1/categories/`),
-        authFetch(`${API_URL}/api/v1/sections/`),
+      const [catRes, homeRes] = await Promise.all([
+        authFetch(`${API_URL}/api/v1/categories/`).catch(() => null),
+        authFetch(`${API_URL}/api/v1/home/`).catch(() => null),
       ]);
 
-      if (catRes && catRes.ok) {
-        const catData = await catRes.json();
-        setCategories(Array.isArray(catData) ? catData : catData?.results || []);
+      const catData = await safeJson(catRes);
+      const catList = Array.isArray(catData) ? catData : catData?.results || [];
+      if (catData !== null) {
+        setCategories(catList);
       }
-      if (secRes && secRes.ok) {
-        const secData = await secRes.json();
-        setSections(Array.isArray(secData) ? secData : secData?.results || []);
-      }
+
+      const homeData = await safeJson(homeRes);
+      // The /api/v1/home/ endpoint returns { sections: [...], categories: [...], slides: [...] }
+      const secList = homeData?.sections || [];
+
+      // Dynamically map API sections and category-derived sections (no hardcoded data)
+      const secMap = new Map();
+
+      // 1. Add API sections
+      secList.forEach((s) => {
+        if (s && s.id) secMap.set(String(s.id), s);
+      });
+
+      // 2. Derive any sections from active category data
+      catList.forEach((cat) => {
+        if (cat && (cat.section || cat.section_name)) {
+          const secId = typeof cat.section === "object" ? cat.section?.id : cat.section;
+          const key = String(secId || cat.section_name);
+          if (key && !secMap.has(key)) {
+            secMap.set(key, {
+              id: secId || key,
+              name: cat.section_name || `Section ${secId}`,
+              slug: (cat.section_name || `section-${secId}`).toLowerCase().replace(/\s+/g, "-"),
+            });
+          }
+        }
+      });
+
+      setSections(Array.from(secMap.values()));
     } catch (err) {
       console.error("fetchData error:", err);
       toast.error("Failed to load categories");
