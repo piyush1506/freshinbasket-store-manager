@@ -129,19 +129,27 @@ export default function ProductPage() {
 
   // Open the full Edit Product modal
   const handleOpenEditModal = (product) => {
-    const catId =
-      typeof product.category === "object"
-        ? product.category?.id
-        : product.category ||
-          product.category_id ||
-          categories.find((c) => c.name === product.category_name)?.id ||
-          "";
+    let catId = "";
+    if (product.category_id !== undefined && product.category_id !== null) {
+      catId = product.category_id;
+    } else if (product.categories && Array.isArray(product.categories) && product.categories.length > 0) {
+      const firstCat = product.categories[0];
+      catId = typeof firstCat === "object" ? firstCat.id : firstCat;
+    } else if (product.category) {
+      catId = typeof product.category === "object" ? product.category.id : product.category;
+    } else if (product.category_names && Array.isArray(product.category_names) && product.category_names.length > 0) {
+      const found = categories.find((c) => c.name === product.category_names[0]);
+      if (found) catId = found.id;
+    } else if (product.category_name) {
+      const found = categories.find((c) => c.name === product.category_name);
+      if (found) catId = found.id;
+    }
 
     setEditingProductData({
       id: product.id,
       name: product.name || "",
       slug: product.slug || "",
-      category_id: String(catId || ""),
+      category_id: catId ? String(catId) : "",
       unit_name: product.unit_name || product.unit?.name || "1 kg",
       price: product.price ? String(product.price) : "",
       mrp: product.mrp || product.market_price ? String(product.mrp || product.market_price) : "",
@@ -223,9 +231,8 @@ export default function ProductPage() {
         formdata.append("tax_percentage", String(editingProductData.tax_percentage || "0"));
         formdata.append("description", editingProductData.description || editingProductData.name.trim());
         formdata.append("is_active", editingProductData.is_active ? "true" : "false");
-        if (editingProductData.category_id && editingProductData.category_id !== "") {
-          formdata.append("categories", editingProductData.category_id);
-        }
+        formdata.append("category_id", editingProductData.category_id || "");
+        formdata.append("categories", editingProductData.category_id || "");
         formdata.append("image", editImageFile);
 
         res = await authFetch(`${API_URL}/api/v1/products/${editingProductData.id}/`, {
@@ -243,12 +250,11 @@ export default function ProductPage() {
           tax_percentage: parseFloat(editingProductData.tax_percentage) || 0,
           description: editingProductData.description || editingProductData.name.trim(),
           is_active: Boolean(editingProductData.is_active),
+          category_id: editingProductData.category_id ? parseInt(editingProductData.category_id, 10) : null,
+          categories: editingProductData.category_id ? [parseInt(editingProductData.category_id, 10)] : [],
         };
         if (editingProductData.mrp && parseFloat(editingProductData.mrp) > 0) {
           payload.mrp = parseFloat(editingProductData.mrp);
-        }
-        if (editingProductData.category_id && editingProductData.category_id !== "") {
-          payload.categories = [parseInt(editingProductData.category_id, 10)];
         }
 
         res = await authFetch(`${API_URL}/api/v1/products/${editingProductData.id}/`, {
