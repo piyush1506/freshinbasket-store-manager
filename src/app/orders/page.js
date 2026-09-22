@@ -22,6 +22,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { getAccessToken, authFetch } from "@/lib/auth";
+import { getImageUrl } from "@/lib/upload";
 import { useAdmin } from "../layout";
 import toast from "react-hot-toast";
 
@@ -186,7 +187,7 @@ export default function AdminOrdersPage() {
     let name = order.customer_name || order.customer_username || "";
     let phone = order.customer_phone || order.phone_number || order.phone || "";
 
-    // 4. If name looks like a phone number (e.g. 10-digit number like 9461877701)
+    // 4. If name looks like a phone number (e.g. 10-digit number)
     if (!phone && name && /^\+?[0-9]{10,12}$/.test(name.trim())) {
       phone = name.trim();
       name = `Customer (${phone})`;
@@ -770,7 +771,7 @@ export default function AdminOrdersPage() {
                               <div className="w-10 h-10 rounded-lg bg-slate-50 dark:bg-[#252530] flex items-center justify-center overflow-hidden shrink-0 border border-slate-200 dark:border-[#2a2a35]">
                                 {item.product_image_url ? (
                                   <img 
-                                    src={item.product_image_url} 
+                                    src={getImageUrl(item.product_image_url)} 
                                     alt={item.product_name || "Product"} 
                                     className="w-full h-full object-cover"
                                     loading="lazy"
@@ -917,7 +918,7 @@ export default function AdminOrdersPage() {
                       <div className="flex items-center gap-3.5">
                         <div className="w-11 h-11 rounded-xl bg-slate-50 dark:bg-[#1a1a26] text-blue-600 dark:text-blue-400 flex items-center justify-center transition-colors overflow-hidden shrink-0 border border-slate-200 dark:border-[#2a2a35]">
                           {rider.avatar ? (
-                            <img src={rider.avatar} alt="Rider" className="w-full h-full object-cover" />
+                            <img src={getImageUrl(rider.avatar)} alt="Rider" className="w-full h-full object-cover" />
                           ) : (
                             <Bike size={20} />
                           )}

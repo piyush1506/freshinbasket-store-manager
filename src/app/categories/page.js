@@ -20,6 +20,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { authFetch } from "@/lib/auth";
+import { uploadImage, getImageUrl, cleanImageUrlForBackend } from "@/lib/upload";
 import toast from "react-hot-toast";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
@@ -92,7 +93,15 @@ export default function CategoriesPage() {
       ]);
 
       const catData = await safeJson(catRes);
-      const catList = Array.isArray(catData) ? catData : catData?.results || [];
+      const rawCatList = Array.isArray(catData) ? catData : catData?.results || [];
+      const catList = rawCatList.map((cat) => {
+        const cleanImg = getImageUrl(cat.image_url || cat.image);
+        return {
+          ...cat,
+          image_url: cleanImg,
+          image: cleanImg,
+        };
+      });
       if (catData !== null) {
         setCategories(catList);
       }
@@ -188,13 +197,12 @@ export default function CategoriesPage() {
     const slug = (newCategory.slug || "").trim() || slugify(newCategory.name);
 
     try {
-      let res;
       if (imageFile) {
         const formdata = new FormData();
         formdata.append("name", newCategory.name.trim());
         formdata.append("slug", slug);
-        if (newCategory.section) {
-          formdata.append("section", newCategory.section);
+        if (newCategory.section && String(newCategory.section).trim() !== "") {
+          formdata.append("section", String(newCategory.section));
         }
         formdata.append("description", newCategory.description || "");
         formdata.append("image", imageFile);
@@ -209,7 +217,7 @@ export default function CategoriesPage() {
           slug: slug,
           description: newCategory.description || "",
         };
-        if (newCategory.section) {
+        if (newCategory.section && String(newCategory.section).trim() !== "") {
           payload.section = parseInt(newCategory.section, 10);
         }
 
@@ -222,8 +230,23 @@ export default function CategoriesPage() {
 
       if (res && res.ok) {
         const created = await res.json();
+        const rawImg =
+          created.image_url ||
+          created.image ||
+          (created.data && (created.data.image_url || created.data.image)) ||
+          imagePreview ||
+          null;
+
+        const finalImg = getImageUrl(rawImg);
+
+        const finalCategory = {
+          ...created,
+          image_url: finalImg || created.image_url,
+          image: finalImg || created.image,
+        };
+
         toast.success(`Category "${newCategory.name}" created successfully!`);
-        setCategories((prev) => [created, ...prev]);
+        setCategories((prev) => [finalCategory, ...prev]);
         setNewCategory({ name: "", slug: "", section: "", description: "" });
         setImageFile(null);
         setImagePreview(null);
@@ -261,12 +284,13 @@ export default function CategoriesPage() {
     const slug = (editingCategory.slug || "").trim() || slugify(editingCategory.name);
 
     try {
-      let res;
       if (editImageFile) {
         const formdata = new FormData();
         formdata.append("name", editingCategory.name.trim());
         formdata.append("slug", slug);
-        formdata.append("section", editingCategory.section || "");
+        if (editingCategory.section && String(editingCategory.section).trim() !== "") {
+          formdata.append("section", String(editingCategory.section));
+        }
         formdata.append("description", editingCategory.description || "");
         formdata.append("image", editImageFile);
 
@@ -279,7 +303,7 @@ export default function CategoriesPage() {
           name: editingCategory.name.trim(),
           slug: slug,
           description: editingCategory.description || "",
-          section: editingCategory.section ? parseInt(editingCategory.section, 10) : null,
+          section: editingCategory.section && String(editingCategory.section).trim() !== "" ? parseInt(editingCategory.section, 10) : null,
         };
 
         res = await authFetch(`${API_URL}/api/v1/categories/${editingCategory.id}/`, {
@@ -291,9 +315,27 @@ export default function CategoriesPage() {
 
       if (res && res.ok) {
         const updated = await res.json();
+        const rawImg =
+          updated.image_url ||
+          updated.image ||
+          (updated.data && (updated.data.image_url || updated.data.image)) ||
+          editImagePreview ||
+          null;
+
+        const finalImg = getImageUrl(rawImg);
+
         toast.success(`Category "${editingCategory.name}" updated successfully!`);
         setCategories((prev) =>
-          prev.map((c) => (c.id === editingCategory.id ? { ...c, ...updated } : c))
+          prev.map((c) =>
+            c.id === editingCategory.id
+              ? {
+                  ...c,
+                  ...updated,
+                  image_url: finalImg || c.image_url,
+                  image: finalImg || c.image,
+                }
+              : c
+          )
         );
         setIsEditModalOpen(false);
         setEditingCategory(null);
@@ -557,11 +599,21 @@ export default function CategoriesPage() {
                   <div className="flex items-start justify-between gap-3 mb-3">
                     <div className="w-14 h-14 rounded-xl bg-slate-100 dark:bg-zinc-800 border border-slate-200/60 dark:border-zinc-700/60 overflow-hidden flex-shrink-0 flex items-center justify-center text-slate-400">
                       {imgSrc ? (
-                        <img
-                          src={imgSrc}
-                          alt={cat.name}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
+                        <>
+                          <img
+                            src={getImageUrl(imgSrc)}
+                            alt={cat.name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                              const fallback = e.currentTarget.parentElement?.querySelector('.cat-img-fallback');
+                              if (fallback) fallback.classList.remove('hidden');
+                            }}
+                          />
+                          <div className="cat-img-fallback hidden w-full h-full flex items-center justify-center">
+                            <FolderTree size={22} />
+                          </div>
+                        </>
                       ) : (
                         <FolderTree size={22} />
                       )}
@@ -646,7 +698,21 @@ export default function CategoriesPage() {
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 overflow-hidden flex-shrink-0 flex items-center justify-center text-slate-400">
                             {imgSrc ? (
-                              <img src={imgSrc} alt={cat.name} className="w-full h-full object-cover" />
+                              <>
+                                <img
+                                  src={getImageUrl(imgSrc)}
+                                  alt={cat.name}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                    const fallback = e.currentTarget.parentElement?.querySelector('.cat-tbl-fallback');
+                                    if (fallback) fallback.classList.remove('hidden');
+                                  }}
+                                />
+                                <div className="cat-tbl-fallback hidden w-full h-full flex items-center justify-center">
+                                  <FolderTree size={16} />
+                                </div>
+                              </>
                             ) : (
                               <FolderTree size={16} />
                             )}
@@ -942,7 +1008,7 @@ export default function CategoriesPage() {
                 </label>
                 <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-zinc-800/80 border border-slate-200 dark:border-zinc-700 rounded-xl">
                   {editImagePreview ? (
-                    <img src={editImagePreview} alt="Preview" className="w-12 h-12 rounded-lg object-cover" />
+                    <img src={getImageUrl(editImagePreview)} alt="Preview" className="w-12 h-12 rounded-lg object-cover" />
                   ) : (
                     <div className="w-12 h-12 rounded-lg bg-slate-200 dark:bg-zinc-700 flex items-center justify-center text-slate-400">
                       <Upload size={18} />

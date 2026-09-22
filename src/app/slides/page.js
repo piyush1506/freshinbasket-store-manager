@@ -14,6 +14,7 @@ import {
   Save,
 } from "lucide-react";
 import { getAccessToken, getUser } from "@/lib/auth";
+import { uploadImage, getImageUrl, cleanImageUrlForBackend } from "@/lib/upload";
 import toast from "react-hot-toast";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
@@ -49,7 +50,16 @@ export default function AdminSlidesPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      setSlides(Array.isArray(data) ? data : []);
+      const rawList = Array.isArray(data) ? data : data?.results || [];
+      const normalizedList = rawList.map((slide) => {
+        const cleanImg = getImageUrl(slide.image_url || slide.image);
+        return {
+          ...slide,
+          image_url: cleanImg,
+          image: cleanImg,
+        };
+      });
+      setSlides(normalizedList);
     } catch {
       toast.error("Failed to load slides");
     } finally {
@@ -105,20 +115,32 @@ export default function AdminSlidesPage() {
     setSaving(true);
     try {
       const token = getAccessToken();
-      let body;
-      let headers = { Authorization: `Bearer ${token}` };
+      const url = editingId
+        ? `${API_URL}/api/v1/slides/${editingId}/`
+        : `${API_URL}/api/v1/slides/`;
+      const method = editingId ? "PATCH" : "POST";
 
       if (form.imageFile) {
-        body = new FormData();
-        Object.keys(form).forEach((key) => {
-          if (key === "imageFile" && form[key]) {
-            body.append("image", form[key]);
-          } else if (key !== "imageFile" && form[key] !== null && form[key] !== undefined) {
-            body.append(key, form[key]);
-          }
+        const body = new FormData();
+        body.append("image", form.imageFile);
+        if (form.title) body.append("title", form.title);
+        if (form.subtitle) body.append("subtitle", form.subtitle);
+        if (form.tag) body.append("tag", form.tag);
+        if (form.link) body.append("link", form.link);
+        if (form.button_text) body.append("button_text", form.button_text);
+        if (form.link_two) body.append("link_two", form.link_two);
+        if (form.button_text_two) body.append("button_text_two", form.button_text_two);
+        if (form.order !== undefined && form.order !== null) body.append("order", String(form.order));
+        body.append("is_active", form.is_active ? "true" : "false");
+        if (form.section_id) body.append("section_id", String(form.section_id));
+
+        res = await fetch(url, {
+          method,
+          headers: { Authorization: `Bearer ${token}` },
+          body,
         });
       } else {
-        body = JSON.stringify({
+        const body = JSON.stringify({
           title: form.title,
           subtitle: form.subtitle,
           tag: form.tag,
@@ -130,23 +152,24 @@ export default function AdminSlidesPage() {
           is_active: form.is_active,
           image_url: form.image_url,
         });
-        headers["Content-Type"] = "application/json";
+
+        res = await fetch(url, {
+          method,
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body,
+        });
       }
 
-      const url = editingId
-        ? `${API_URL}/api/v1/slides/${editingId}/`
-        : `${API_URL}/api/v1/slides/`;
-      const method = editingId ? "PATCH" : "POST";
-
-      const res = await fetch(url, {
-        method,
-        headers,
-        body,
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(Object.values(err).flat().join(", "));
+      if (!res || !res.ok) {
+        let errStr = "Failed to save slide";
+        try {
+          const err = await res.json();
+          errStr = Object.values(err).flat().join(", ");
+        } catch (_) {}
+        throw new Error(errStr);
       }
 
       toast.success(editingId ? "Slide updated" : "Slide created");
@@ -434,7 +457,7 @@ export default function AdminSlidesPage() {
                 <div className="w-24 h-14 shrink-0 rounded-lg overflow-hidden bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-800">
                   {slide.image_url ? (
                     <img
-                      src={slide.image_url}
+                      src={getImageUrl(slide.image_url)}
                       alt={slide.title || "Slide"}
                       className="w-full h-full object-cover"
                     />

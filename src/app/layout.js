@@ -661,7 +661,7 @@ export default function RootLayout({ children }) {
                         className="text-[10px]"
                         style={{ color: isDark ? "#555" : "#8C8FA7" }}
                       >
-                        {user?.phone_number || "9461877701"}
+                        {user?.phone_number || user?.email || "Store Manager"}
                       </p>
                     </div>
                     <div

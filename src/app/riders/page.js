@@ -31,6 +31,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { getAccessToken, authFetch } from "@/lib/auth";
+import { getImageUrl } from "@/lib/upload";
 import toast from "react-hot-toast";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
@@ -1242,7 +1243,7 @@ export default function AdminRidersPage({ defaultTab }) {
                                     <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-zinc-700 flex items-center justify-center overflow-hidden shrink-0 border border-slate-200 dark:border-zinc-600">
                                       {itemImg ? (
                                         <img
-                                          src={itemImg}
+                                          src={getImageUrl(itemImg)}
                                           alt={itemName}
                                           className="w-full h-full object-cover"
                                           loading="lazy"

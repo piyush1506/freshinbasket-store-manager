@@ -217,7 +217,7 @@ function AdminLoginForm() {
                 type="text"
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
-                placeholder="e.g. 9461877701 or admin@freshinbasket.com"
+                placeholder="e.g. admin@freshinbasket.com"
                 required
                 autoFocus
                 autoComplete="username"

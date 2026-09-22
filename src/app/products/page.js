@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import {
   Package,
   Plus,
@@ -22,6 +22,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { authFetch, getAccessToken } from "@/lib/auth";
+import { uploadImage, updateProductImage, getImageUrl, isNestedCloudinaryUrl, cleanImageUrlForBackend } from "@/lib/upload";
 import toast from "react-hot-toast";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
@@ -85,7 +86,16 @@ export default function ProductPage() {
 
       if (prodRes && prodRes.ok) {
         const prodData = await prodRes.json();
-        setProducts(Array.isArray(prodData) ? prodData : prodData?.results || []);
+        const rawList = Array.isArray(prodData) ? prodData : prodData?.results || [];
+        const normalizedList = rawList.map((p) => {
+          const cleanImg = getImageUrl(p.image_url || p.image);
+          return {
+            ...p,
+            image_url: cleanImg,
+            image: cleanImg,
+          };
+        });
+        setProducts(normalizedList);
       }
       if (catRes && catRes.ok) {
         const catData = await catRes.json();
@@ -161,7 +171,7 @@ export default function ProductPage() {
       is_active: product.is_active !== false,
     });
     setEditImageFile(null);
-    setEditImagePreview(product.image_url || product.image || null);
+    setEditImagePreview(getImageUrl(product.image_url || product.image || null));
     setIsEditModalOpen(true);
   };
 
@@ -243,8 +253,10 @@ export default function ProductPage() {
         formdata.append("tax_percentage", String(editingProductData.tax_percentage || "0"));
         formdata.append("description", editingProductData.description || trimmedName);
         formdata.append("is_active", editingProductData.is_active ? "true" : "false");
-        formdata.append("category_id", editingProductData.category_id || "");
-        formdata.append("categories", editingProductData.category_id || "");
+        if (editingProductData.category_id && String(editingProductData.category_id).trim() !== "") {
+          formdata.append("category_id", String(editingProductData.category_id));
+          formdata.append("categories", String(editingProductData.category_id));
+        }
         formdata.append("image", editImageFile);
 
         res = await authFetch(`${API_URL}/api/v1/products/${editingProductData.id}/`, {
@@ -280,7 +292,15 @@ export default function ProductPage() {
 
       if (res && res.ok) {
         const updated = await res.json();
-        const finalImg = updated.image_url || updated.image || editImagePreview || null;
+        const rawImg =
+          updated.image_url ||
+          updated.image ||
+          (updated.data && (updated.data.image_url || updated.data.image)) ||
+          editImagePreview ||
+          null;
+
+        const finalImg = getImageUrl(rawImg);
+
         toast.success(`"${editingProductData.name}" updated successfully!`);
         setProducts((prev) =>
           prev.map((p) =>
@@ -364,8 +384,9 @@ export default function ProductPage() {
         formdata.append("description", newProduct.description || trimmedName);
         formdata.append("is_active", newProduct.is_active ? "true" : "false");
 
-        if (newProduct.category_id && newProduct.category_id !== "") {
-          formdata.append("categories", newProduct.category_id);
+        if (newProduct.category_id && String(newProduct.category_id).trim() !== "") {
+          formdata.append("category_id", String(newProduct.category_id));
+          formdata.append("categories", String(newProduct.category_id));
         }
         formdata.append("image", imageFile);
 
@@ -390,6 +411,7 @@ export default function ProductPage() {
         }
         if (newProduct.category_id && newProduct.category_id !== "") {
           payload.categories = [parseInt(newProduct.category_id, 10)];
+          payload.category_id = parseInt(newProduct.category_id, 10);
         }
 
         res = await authFetch(`${API_URL}/api/v1/products/`, {
@@ -403,8 +425,21 @@ export default function ProductPage() {
 
       if (res && res.ok) {
         const created = await res.json();
+        const finalImg =
+          created.image_url ||
+          created.image ||
+          (created.data && (created.data.image_url || created.data.image)) ||
+          imagePreview ||
+          null;
+
+        const finalProduct = {
+          ...created,
+          image_url: finalImg || created.image_url,
+          image: finalImg || created.image,
+        };
+
         toast.success(`"${newProduct.name}" added successfully!`);
-        setProducts((prev) => [created, ...prev]);
+        setProducts((prev) => [finalProduct, ...prev]);
         setNewProduct({
           name: "",
           slug: "",
@@ -579,20 +614,30 @@ export default function ProductPage() {
     if (!file) return;
     setUploadingId(productId);
     try {
-      const formdata = new FormData();
-      formdata.append("image", file);
-      const res = await authFetch(`${API_URL}/api/v1/products/${productId}/`, {
-        method: "PATCH",
-        body: formdata,
-      });
-      if (!res.ok) throw new Error("Upload failed");
+      const updatedProduct = await updateProductImage(productId, file);
+      const rawImg =
+        updatedProduct.image_url ||
+        updatedProduct.image ||
+        (updatedProduct.data && (updatedProduct.data.image_url || updatedProduct.data.image)) ||
+        URL.createObjectURL(file);
 
-      const updated = await res.json();
+      const newImg = getImageUrl(rawImg);
+
       setProducts((prev) =>
-        prev.map((p) => (p.id === productId ? { ...p, image_url: updated.image_url, image: updated.image_url } : p))
+        prev.map((p) =>
+          p.id === productId
+            ? {
+                ...p,
+                ...updatedProduct,
+                image_url: newImg,
+                image: newImg,
+              }
+            : p
+        )
       );
-      toast.success("Image uploaded successfully");
+      toast.success("Product image updated successfully!");
     } catch (error) {
+      console.error("Product image upload error:", error);
       toast.error(error.message || "Failed to upload image");
     } finally {
       setUploadingId(null);
@@ -873,11 +918,21 @@ export default function ProductPage() {
                     {/* Thumbnail with 1-click photo upload */}
                     <div className="relative w-18 h-18 rounded-xl bg-slate-50 dark:bg-zinc-800 overflow-hidden shrink-0 border border-slate-200 dark:border-zinc-700 flex items-center justify-center group/img">
                       {product.image_url || product.image ? (
-                        <img
-                          src={product.image_url || product.image}
-                          alt={product.name}
-                          className="w-full h-full object-cover group-hover/img:scale-105 transition-transform"
-                        />
+                        <>
+                          <img
+                            src={getImageUrl(product.image_url || product.image)}
+                            alt={product.name}
+                            className="w-full h-full object-cover group-hover/img:scale-105 transition-transform"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                              const fallback = e.currentTarget.parentElement?.querySelector('.img-fallback');
+                              if (fallback) fallback.classList.remove('hidden');
+                            }}
+                          />
+                          <div className="img-fallback hidden w-full h-full flex items-center justify-center">
+                            <Package className="text-slate-400 dark:text-zinc-600" size={26} />
+                          </div>
+                        </>
                       ) : (
                         <Package className="text-slate-400 dark:text-zinc-600" size={26} />
                       )}
@@ -1057,7 +1112,21 @@ export default function ProductPage() {
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-lg bg-slate-50 dark:bg-zinc-800 overflow-hidden shrink-0 border border-slate-200 dark:border-zinc-700 flex items-center justify-center">
                             {product.image_url || product.image ? (
-                              <img src={product.image_url || product.image} alt={product.name} className="w-full h-full object-cover" />
+                              <>
+                                <img
+                                  src={getImageUrl(product.image_url || product.image)}
+                                  alt={product.name}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                    const fallback = e.currentTarget.parentElement?.querySelector('.img-fallback-tbl');
+                                    if (fallback) fallback.classList.remove('hidden');
+                                  }}
+                                />
+                                <div className="img-fallback-tbl hidden w-full h-full flex items-center justify-center">
+                                  <Package size={16} className="text-slate-400 dark:text-zinc-500" />
+                                </div>
+                              </>
                             ) : (
                               <Package size={16} className="text-slate-400 dark:text-zinc-500" />
                             )}
@@ -1619,7 +1688,7 @@ export default function ProductPage() {
                 <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-zinc-800/80 border border-slate-200 dark:border-zinc-700 rounded-md">
                   {editImagePreview ? (
                     <img
-                      src={editImagePreview}
+                      src={getImageUrl(editImagePreview)}
                       alt="Preview"
                       className="w-12 h-12 rounded-md object-cover border border-slate-200 dark:border-zinc-700"
                     />
@@ -1810,7 +1879,7 @@ export default function ProductPage() {
               <div className="w-9 h-9 rounded-md bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 overflow-hidden shrink-0 flex items-center justify-center">
                 {productToDelete.image_url || productToDelete.image ? (
                   <img
-                    src={productToDelete.image_url || productToDelete.image}
+                    src={getImageUrl(productToDelete.image_url || productToDelete.image)}
                     alt={productToDelete.name}
                     className="w-full h-full object-cover"
                   />

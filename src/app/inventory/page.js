@@ -22,7 +22,8 @@ import {
   ArrowRight,
   ExternalLink,
 } from "lucide-react";
-import { getAccessToken } from "@/lib/auth";
+import { getAccessToken, authFetch } from "@/lib/auth";
+import { uploadImage, updateProductImage, getImageUrl, cleanImageUrlForBackend } from "@/lib/upload";
 import toast from "react-hot-toast";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
@@ -80,11 +81,21 @@ export default function AdminInventoryPage() {
 
       if (prodRes.ok) {
         const prodData = await prodRes.json();
-        setProducts(Array.isArray(prodData) ? prodData : prodData?.results || []);
+        const rawList = Array.isArray(prodData) ? prodData : prodData?.results || [];
+        const normalizedList = rawList.map((p) => {
+          const cleanImg = getImageUrl(p.image_url || p.image);
+          return {
+            ...p,
+            image_url: cleanImg,
+            image: cleanImg,
+          };
+        });
+        setProducts(normalizedList);
       }
       if (catRes.ok) {
         const catData = await catRes.json();
-        setCategories(Array.isArray(catData) ? catData : catData?.results || []);
+        const catList = Array.isArray(catData) ? catData : catData?.results || [];
+        setCategories(catList);
       }
     } catch {
       toast.error("Failed to load inventory");
@@ -173,29 +184,32 @@ export default function AdminInventoryPage() {
   const handleImageUpload = async (productId, file) => {
     if (!file) return;
     setUploadingId(productId);
-    const token = getAccessToken();
 
     try {
-      const formData = new FormData();
-      formData.append("image", file);
+      const updatedProduct = await updateProductImage(productId, file);
+      const rawImg =
+        updatedProduct.image_url ||
+        updatedProduct.image ||
+        (updatedProduct.data && (updatedProduct.data.image_url || updatedProduct.data.image)) ||
+        URL.createObjectURL(file);
 
-      const res = await fetch(
-        `${API_URL}/api/v1/products/${productId}/`,
-        {
-          method: "PATCH",
-          headers: { Authorization: `Bearer ${token}` },
-          body: formData,
-        }
-      );
+      const newImg = getImageUrl(rawImg);
 
-      if (!res.ok) throw new Error("Upload failed");
-
-      const updated = await res.json();
       setProducts((prev) =>
-        prev.map((p) => (p.id === productId ? { ...p, image_url: updated.image_url, image: updated.image_url } : p))
+        prev.map((p) =>
+          p.id === productId
+            ? {
+                ...p,
+                ...updatedProduct,
+                image_url: newImg,
+                image: newImg,
+              }
+            : p
+        )
       );
-      toast.success("Product image updated!");
+      toast.success("Product image updated successfully!");
     } catch (err) {
+      console.error("Inventory image upload error:", err);
       toast.error(err.message || "Failed to upload image");
     } finally {
       setUploadingId(null);
@@ -492,11 +506,21 @@ export default function AdminInventoryPage() {
                     {/* PRODUCT IMAGE THUMBNAIL */}
                     <div className="relative w-16 h-16 rounded-xl bg-slate-50 dark:bg-zinc-800 overflow-hidden shrink-0 border border-slate-200 dark:border-zinc-700 flex items-center justify-center group/img">
                       {product.image || product.image_url ? (
-                        <img
-                          src={product.image || product.image_url}
-                          alt={product.name}
-                          className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-200"
-                        />
+                        <>
+                          <img
+                            src={getImageUrl(product.image || product.image_url)}
+                            alt={product.name}
+                            className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-200"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                              const fallback = e.currentTarget.parentElement?.querySelector('.inv-img-fallback');
+                              if (fallback) fallback.classList.remove('hidden');
+                            }}
+                          />
+                          <div className="inv-img-fallback hidden w-full h-full flex items-center justify-center">
+                            <Package className="text-slate-400 dark:text-zinc-500" size={24} />
+                          </div>
+                        </>
                       ) : (
                         <Package className="text-slate-400 dark:text-zinc-500" size={24} />
                       )}
@@ -614,7 +638,21 @@ export default function AdminInventoryPage() {
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-zinc-800 shrink-0 overflow-hidden border border-slate-200 dark:border-zinc-700 flex items-center justify-center relative group/img">
                             {product.image || product.image_url ? (
-                              <img src={product.image || product.image_url} alt={product.name} className="w-full h-full object-cover" />
+                              <>
+                                <img
+                                  src={getImageUrl(product.image || product.image_url)}
+                                  alt={product.name}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                    const fallback = e.currentTarget.parentElement?.querySelector('.inv-tbl-fallback');
+                                    if (fallback) fallback.classList.remove('hidden');
+                                  }}
+                                />
+                                <div className="inv-tbl-fallback hidden w-full h-full flex items-center justify-center">
+                                  <Package size={16} className="text-slate-400 dark:text-zinc-500" />
+                                </div>
+                              </>
                             ) : (
                               <Package size={16} className="text-slate-400 dark:text-zinc-500" />
                             )}
